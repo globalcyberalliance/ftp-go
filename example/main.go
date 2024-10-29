@@ -5,8 +5,7 @@ package main
 import (
 	"log"
 
-	"goftp.io/server/v2"
-	"goftp.io/server/v2/driver/file"
+	"github.com/globalcyberalliance/ftp-go/driver/file"
 )
 
 func main() {
@@ -15,13 +14,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	s, err := server.NewServer(&server.Options{
+	s, err := ftp.NewServer(&ftp.Options{
 		Driver: driver,
-		Auth: &server.SimpleAuth{
+		Auth: &ftp.SimpleAuth{
 			Name:     "admin",
 			Password: "admin",
 		},
-		Perm:      server.NewSimplePerm("root", "root"),
+		Perm:      ftp.NewSimplePerm("root", "root"),
 		RateLimit: 1000000, // 1MB/s limit
 	})
 	if err != nil {

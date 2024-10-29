@@ -2,10 +2,11 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package server
+package ftp
 
 // Notifier represents a notification operator interface
 type Notifier interface {
+	BeforeCommand(ctx *Context, command string)
 	BeforeLoginUser(ctx *Context, userName string)
 	BeforePutFile(ctx *Context, dstPath string)
 	BeforeDeleteFile(ctx *Context, dstPath string)
@@ -24,9 +25,13 @@ type Notifier interface {
 
 type notifierList []Notifier
 
-var (
-	_ Notifier = notifierList{}
-)
+var _ Notifier = notifierList{}
+
+func (notifiers notifierList) BeforeCommand(ctx *Context, command string) {
+	for _, notifier := range notifiers {
+		notifier.BeforeCommand(ctx, command)
+	}
+}
 
 func (notifiers notifierList) BeforeLoginUser(ctx *Context, userName string) {
 	for _, notifier := range notifiers {
@@ -115,9 +120,11 @@ func (notifiers notifierList) AfterDirDeleted(ctx *Context, dstPath string, err 
 // NullNotifier implements Notifier
 type NullNotifier struct{}
 
-var (
-	_ Notifier = &NullNotifier{}
-)
+var _ Notifier = &NullNotifier{}
+
+// BeforeCommand implements Notifier
+func (NullNotifier) BeforeCommand(ctx *Context, command string) {
+}
 
 // BeforeLoginUser implements Notifier
 func (NullNotifier) BeforeLoginUser(ctx *Context, userName string) {

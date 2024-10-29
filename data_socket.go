@@ -2,7 +2,7 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package server
+package ftp
 
 import (
 	"crypto/tls"
@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"goftp.io/server/v2/ratelimit"
+	"github.com/globalcyberalliance/ftp-go/ratelimit"
 )
 
 // DataSocket describes a data socket is used to send non-control data between the client and
@@ -40,12 +40,12 @@ type DataSocket interface {
 }
 
 type activeSocket struct {
-	conn *net.TCPConn
+	conn   *net.TCPConn
 	reader io.Reader
 	writer io.Writer
-	sess *Session
-	host string
-	port int
+	sess   *Session
+	host   string
+	port   int
 }
 
 func newActiveSocket(sess *Session, remote string, port int) (DataSocket, error) {
@@ -54,14 +54,12 @@ func newActiveSocket(sess *Session, remote string, port int) (DataSocket, error)
 	sess.log("Opening active data connection to " + connectTo)
 
 	raddr, err := net.ResolveTCPAddr("tcp", connectTo)
-
 	if err != nil {
 		sess.log(err)
 		return nil, err
 	}
 
 	tcpConn, err := net.DialTCP("tcp", nil, raddr)
-
 	if err != nil {
 		sess.log(err)
 		return nil, err
@@ -103,16 +101,16 @@ func (socket *activeSocket) Close() error {
 }
 
 type passiveSocket struct {
-	sess    *Session
 	conn    net.Conn
-	reader io.Reader
-	writer io.Writer
-	port    int
-	host    string
+	reader  io.Reader
+	writer  io.Writer
+	err     error
+	sess    *Session
 	ingress chan []byte
 	egress  chan []byte
+	host    string
+	port    int
 	lock    sync.Mutex // protects conn and err
-	err     error
 }
 
 // Detect if an error is "bind: address already in use"

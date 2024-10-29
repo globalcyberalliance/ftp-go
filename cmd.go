@@ -2,7 +2,7 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package server
+package ftp
 
 import (
 	"bytes"
@@ -24,58 +24,56 @@ type Command interface {
 	Execute(*Session, string)
 }
 
-var (
-	defaultCommands = map[string]Command{
-		"ADAT": commandAdat{},
-		"ALLO": commandAllo{},
-		"APPE": commandAppe{},
-		"AUTH": commandAuth{},
-		"CDUP": commandCdup{},
-		"CWD":  commandCwd{},
-		"CCC":  commandCcc{},
-		"CONF": commandConf{},
-		"CLNT": commandCLNT{},
-		"DELE": commandDele{},
-		"ENC":  commandEnc{},
-		"EPRT": commandEprt{},
-		"EPSV": commandEpsv{},
-		"FEAT": commandFeat{},
-		"LIST": commandList{},
-		"LPRT": commandLprt{},
-		"NLST": commandNlst{},
-		"MDTM": commandMdtm{},
-		"MIC":  commandMic{},
-		"MLSD": commandMLSD{},
-		"MKD":  commandMkd{},
-		"MODE": commandMode{},
-		"NOOP": commandNoop{},
-		"OPTS": commandOpts{},
-		"PASS": commandPass{},
-		"PASV": commandPasv{},
-		"PBSZ": commandPbsz{},
-		"PORT": commandPort{},
-		"PROT": commandProt{},
-		"PWD":  commandPwd{},
-		"QUIT": commandQuit{},
-		"RETR": commandRetr{},
-		"REST": commandRest{},
-		"RNFR": commandRnfr{},
-		"RNTO": commandRnto{},
-		"RMD":  commandRmd{},
-		"SIZE": commandSize{},
-		"STAT": commandStat{},
-		"STOR": commandStor{},
-		"STRU": commandStru{},
-		"SYST": commandSyst{},
-		"TYPE": commandType{},
-		"USER": commandUser{},
-		"XCUP": commandCdup{},
-		"XCWD": commandCwd{},
-		"XMKD": commandMkd{},
-		"XPWD": commandPwd{},
-		"XRMD": commandXRmd{},
-	}
-)
+var defaultCommands = map[string]Command{
+	"ADAT": commandAdat{},
+	"ALLO": commandAllo{},
+	"APPE": commandAppe{},
+	"AUTH": commandAuth{},
+	"CDUP": commandCdup{},
+	"CWD":  commandCwd{},
+	"CCC":  commandCcc{},
+	"CONF": commandConf{},
+	"CLNT": commandCLNT{},
+	"DELE": commandDele{},
+	"ENC":  commandEnc{},
+	"EPRT": commandEprt{},
+	"EPSV": commandEpsv{},
+	"FEAT": commandFeat{},
+	"LIST": commandList{},
+	"LPRT": commandLprt{},
+	"NLST": commandNlst{},
+	"MDTM": commandMdtm{},
+	"MIC":  commandMic{},
+	"MLSD": commandMLSD{},
+	"MKD":  commandMkd{},
+	"MODE": commandMode{},
+	"NOOP": commandNoop{},
+	"OPTS": commandOpts{},
+	"PASS": commandPass{},
+	"PASV": commandPasv{},
+	"PBSZ": commandPbsz{},
+	"PORT": commandPort{},
+	"PROT": commandProt{},
+	"PWD":  commandPwd{},
+	"QUIT": commandQuit{},
+	"RETR": commandRetr{},
+	"REST": commandRest{},
+	"RNFR": commandRnfr{},
+	"RNTO": commandRnto{},
+	"RMD":  commandRmd{},
+	"SIZE": commandSize{},
+	"STAT": commandStat{},
+	"STOR": commandStor{},
+	"STRU": commandStru{},
+	"SYST": commandSyst{},
+	"TYPE": commandType{},
+	"USER": commandUser{},
+	"XCUP": commandCdup{},
+	"XCWD": commandCwd{},
+	"XMKD": commandMkd{},
+	"XPWD": commandPwd{},
+	"XRMD": commandXRmd{},
+}
 
 // DefaultCommands returns the default commands
 func DefaultCommands() map[string]Command {
@@ -131,7 +129,7 @@ func (cmd commandAppe) Execute(sess *Session, param string) {
 		sess.lastFilePos = -1
 	}()
 
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "APPE",
 		Param: param,
@@ -257,7 +255,7 @@ func (cmd commandCwd) RequireAuth() bool {
 
 func (cmd commandCwd) Execute(sess *Session, param string) {
 	path := sess.buildPath(param)
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "CWD",
 		Param: param,
@@ -303,7 +301,7 @@ func (cmd commandDele) RequireAuth() bool {
 
 func (cmd commandDele) Execute(sess *Session, param string) {
 	path := sess.buildPath(param)
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "DELE",
 		Param: param,
@@ -510,7 +508,7 @@ func convertFileInfo(sess *Session, f os.FileInfo, p string) (FileInfo, error) {
 }
 
 func list(sess *Session, cmd, p, param string) ([]FileInfo, error) {
-	var ctx = &Context{
+	ctx := &Context{
 		Sess:  sess,
 		Cmd:   cmd,
 		Param: param,
@@ -574,7 +572,7 @@ func parseListParam(param string) (path string) {
 			}
 			i = strings.LastIndex(param, " "+field) + len(field) + 1
 		}
-		path = strings.TrimLeft(param[i:], " ") //Get all the path even with space inside
+		path = strings.TrimLeft(param[i:], " ") // Get all the path even with space inside
 	}
 	return path
 }
@@ -596,12 +594,13 @@ func (cmd commandNlst) RequireAuth() bool {
 }
 
 func (cmd commandNlst) Execute(sess *Session, param string) {
-	var ctx = &Context{
+	ctx := &Context{
 		Sess:  sess,
 		Cmd:   "NLST",
 		Param: param,
 		Data:  make(map[string]interface{}),
 	}
+
 	path := sess.buildPath(parseListParam(param))
 	info, err := sess.server.Driver.Stat(ctx, path)
 	if err != nil {
@@ -619,29 +618,35 @@ func (cmd commandNlst) Execute(sess *Session, param string) {
 		if err != nil {
 			return err
 		}
+
 		if info.IsDir() {
 			mode |= os.ModeDir
 		}
+
 		owner, err := sess.server.Perm.GetOwner(path)
 		if err != nil {
 			return err
 		}
+
 		group, err := sess.server.Perm.GetGroup(path)
 		if err != nil {
 			return err
 		}
+
 		files = append(files, &fileInfo{
 			FileInfo: f,
 			mode:     mode,
 			owner:    owner,
 			group:    group,
 		})
+
 		return nil
 	})
 	if err != nil {
 		sess.writeMessage(550, err.Error())
 		return
 	}
+
 	sess.writeMessage(150, "Opening ASCII mode data connection for file list")
 	sess.sendOutofbandData(listFormatter(files).Short())
 }
@@ -695,7 +700,7 @@ func (cmd commandMkd) RequireAuth() bool {
 
 func (cmd commandMkd) Execute(sess *Session, param string) {
 	path := sess.buildPath(param)
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "MKD",
 		Param: param,
@@ -783,7 +788,7 @@ func (cmd commandPass) Execute(sess *Session, param string) {
 	if driverAuth, found := sess.server.Driver.(Auth); found {
 		auth = driverAuth
 	}
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "PASS",
 		Param: param,
@@ -946,14 +951,14 @@ func (cmd commandRetr) Execute(sess *Session, param string) {
 	defer func() {
 		sess.lastFilePos = -1
 	}()
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "RETR",
 		Param: param,
 		Data:  make(map[string]interface{}),
 	}
 	sess.server.notifiers.BeforeDownloadFile(&ctx, path)
-	var readPos = sess.lastFilePos
+	readPos := sess.lastFilePos
 	if readPos < 0 {
 		readPos = 0
 	}
@@ -1106,7 +1111,7 @@ func (cmd commandXRmd) Execute(sess *Session, param string) {
 
 func executeRmd(cmd string, sess *Session, param string) {
 	p := sess.buildPath(param)
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   cmd,
 		Param: param,
@@ -1117,13 +1122,14 @@ func executeRmd(cmd string, sess *Session, param string) {
 		return
 	}
 
-	var needChangeCurDir = strings.HasPrefix(param, sess.curDir)
+	needChangeCurDir := strings.HasPrefix(param, sess.curDir)
 
 	sess.server.notifiers.BeforeDeleteDir(&ctx, p)
 	err := sess.server.Driver.DeleteDir(&ctx, p)
 	if needChangeCurDir {
 		sess.curDir = path.Dir(param)
 	}
+
 	sess.server.notifiers.AfterDirDeleted(&ctx, p, err)
 	if err == nil {
 		sess.writeMessage(250, "Directory deleted")
@@ -1247,7 +1253,7 @@ func (cmd commandMLSD) RequireAuth() bool {
 func toMLSDFormat(files []FileInfo) []byte {
 	var buf bytes.Buffer
 	for _, file := range files {
-		var fileType = "file"
+		fileType := "file"
 		if file.IsDir() {
 			fileType = "dir"
 		}
@@ -1409,7 +1415,7 @@ func (cmd commandStat) Execute(sess *Session, param string) {
 		return
 	}
 
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "STAT",
 		Param: param,
@@ -1479,7 +1485,7 @@ func (cmd commandStor) Execute(sess *Session, param string) {
 		sess.lastFilePos = -1
 	}()
 
-	var ctx = Context{
+	ctx := Context{
 		Sess:  sess,
 		Cmd:   "STOR",
 		Param: param,
@@ -1548,14 +1554,14 @@ func (cmd commandSyst) Execute(sess *Session, param string) {
 
 // commandType responds to the TYPE FTP command.
 //
-//  like the MODE and STRU commands, TYPE dates back to a time when the FTP
-//  protocol was more aware of the content of the files it was transferring, and
-//  would sometimes be expected to translate things like EOL markers on the fly.
+//	like the MODE and STRU commands, TYPE dates back to a time when the FTP
+//	protocol was more aware of the content of the files it was transferring, and
+//	would sometimes be expected to translate things like EOL markers on the fly.
 //
-//  Valid options were A(SCII), I(mage), E(BCDIC) or LN (for local type). Since
-//  we plan to just accept bytes from the client unchanged, I think Image mode is
-//  adequate. The RFC requires we accept ASCII mode however, so accept it, but
-//  ignore it.
+//	Valid options were A(SCII), I(mage), E(BCDIC) or LN (for local type). Since
+//	we plan to just accept bytes from the client unchanged, I think Image mode is
+//	adequate. The RFC requires we accept ASCII mode however, so accept it, but
+//	ignore it.
 type commandType struct{}
 
 func (cmd commandType) IsExtend() bool {

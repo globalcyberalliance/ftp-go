@@ -10,9 +10,9 @@ import (
 
 // Limiter represents a rate limiter
 type Limiter struct {
+	t     time.Time
 	rate  time.Duration
 	count int64
-	t     time.Time
 }
 
 // New create a limiter for transfer speed, parameter rate means bytes per second

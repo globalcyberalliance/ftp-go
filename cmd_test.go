@@ -2,12 +2,12 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package server
+package ftp
 
 import "testing"
 
 func TestParseListParam(t *testing.T) {
-	var paramTests = []struct {
+	paramTests := []struct {
 		param    string // input
 		expected string // expected result
 	}{

@@ -12,8 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"goftp.io/server/v2"
-	"goftp.io/server/v2/driver/file"
+	"github.com/globalcyberalliance/ftp-go/driver/file"
 
 	"github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/assert"
@@ -23,20 +22,20 @@ func TestFileDriver(t *testing.T) {
 	err := os.MkdirAll("./testdata", os.ModePerm)
 	assert.NoError(t, err)
 
-	var perm = server.NewSimplePerm("test", "test")
+	perm := ftp.NewSimplePerm("test", "test")
 	driver, err := file.NewDriver("./testdata")
 	assert.NoError(t, err)
 
-	opt := &server.Options{
+	opt := &ftp.Options{
 		Name:   "test ftpd",
 		Driver: driver,
 		Perm:   perm,
 		Port:   2122,
-		Auth: &server.SimpleAuth{
+		Auth: &ftp.SimpleAuth{
 			Name:     "admin",
 			Password: "admin",
 		},
-		Logger: new(server.DiscardLogger),
+		Logger: new(ftp.DiscardLogger),
 	}
 
 	runServer(t, opt, nil, func() {
@@ -53,7 +52,7 @@ func TestFileDriver(t *testing.T) {
 			assert.NoError(t, f.Login("admin", "admin"))
 			assert.Error(t, f.Login("admin", ""))
 
-			var content = `test`
+			content := `test`
 			assert.NoError(t, f.Stor("server_test.go", strings.NewReader(content)))
 
 			names, err := f.NameList("/")
@@ -136,20 +135,20 @@ func TestLogin(t *testing.T) {
 	err := os.MkdirAll("./testdata", os.ModePerm)
 	assert.NoError(t, err)
 
-	var perm = server.NewSimplePerm("test", "test")
+	perm := ftp.NewSimplePerm("test", "test")
 	driver, err := file.NewDriver("./testdata")
 	assert.NoError(t, err)
 
 	// Server options without hostname or port
-	opt := &server.Options{
+	opt := &ftp.Options{
 		Name:   "test ftpd",
 		Driver: driver,
-		Auth: &server.SimpleAuth{
+		Auth: &ftp.SimpleAuth{
 			Name:     "admin",
 			Password: "admin",
 		},
 		Perm:   perm,
-		Logger: new(server.DiscardLogger),
+		Logger: new(ftp.DiscardLogger),
 	}
 
 	// Start the listener
@@ -157,11 +156,11 @@ func TestLogin(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the server using the listener
-	s, err := server.NewServer(opt)
+	s, err := ftp.NewServer(opt)
 	assert.NoError(t, err)
 	go func() {
 		err := s.Serve(l)
-		assert.EqualError(t, err, server.ErrServerClosed.Error())
+		assert.EqualError(t, err, ftp.ErrServerClosed.Error())
 	}()
 
 	// Give server 0.5 seconds to get to the listening state

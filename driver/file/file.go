@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"goftp.io/server/v2"
+	ftp "github.com/globalcyberalliance/ftp-go"
 )
 
 // Driver implements Driver directly read local file system
@@ -21,7 +21,7 @@ type Driver struct {
 }
 
 // NewDriver implements Driver
-func NewDriver(rootPath string) (server.Driver, error) {
+func NewDriver(rootPath string) (ftp.Driver, error) {
 	var err error
 	rootPath, err = filepath.Abs(rootPath)
 	if err != nil {
@@ -36,7 +36,7 @@ func (driver *Driver) realPath(path string) string {
 }
 
 // Stat implements Driver
-func (driver *Driver) Stat(ctx *server.Context, path string) (os.FileInfo, error) {
+func (driver *Driver) Stat(ctx *ftp.Context, path string) (os.FileInfo, error) {
 	basepath := driver.realPath(path)
 	rPath, err := filepath.Abs(basepath)
 	if err != nil {
@@ -46,7 +46,7 @@ func (driver *Driver) Stat(ctx *server.Context, path string) (os.FileInfo, error
 }
 
 // ListDir implements Driver
-func (driver *Driver) ListDir(ctx *server.Context, path string, callback func(os.FileInfo) error) error {
+func (driver *Driver) ListDir(ctx *ftp.Context, path string, callback func(os.FileInfo) error) error {
 	basepath := driver.realPath(path)
 	return filepath.Walk(basepath, func(f string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -67,7 +67,7 @@ func (driver *Driver) ListDir(ctx *server.Context, path string, callback func(os
 }
 
 // DeleteDir implements Driver
-func (driver *Driver) DeleteDir(ctx *server.Context, path string) error {
+func (driver *Driver) DeleteDir(ctx *ftp.Context, path string) error {
 	rPath := driver.realPath(path)
 	f, err := os.Lstat(rPath)
 	if err != nil {
@@ -80,7 +80,7 @@ func (driver *Driver) DeleteDir(ctx *server.Context, path string) error {
 }
 
 // DeleteFile implements Driver
-func (driver *Driver) DeleteFile(ctx *server.Context, path string) error {
+func (driver *Driver) DeleteFile(ctx *ftp.Context, path string) error {
 	rPath := driver.realPath(path)
 	f, err := os.Lstat(rPath)
 	if err != nil {
@@ -93,20 +93,20 @@ func (driver *Driver) DeleteFile(ctx *server.Context, path string) error {
 }
 
 // Rename implements Driver
-func (driver *Driver) Rename(ctx *server.Context, fromPath string, toPath string) error {
+func (driver *Driver) Rename(ctx *ftp.Context, fromPath string, toPath string) error {
 	oldPath := driver.realPath(fromPath)
 	newPath := driver.realPath(toPath)
 	return os.Rename(oldPath, newPath)
 }
 
 // MakeDir implements Driver
-func (driver *Driver) MakeDir(ctx *server.Context, path string) error {
+func (driver *Driver) MakeDir(ctx *ftp.Context, path string) error {
 	rPath := driver.realPath(path)
 	return os.MkdirAll(rPath, os.ModePerm)
 }
 
 // GetFile implements Driver
-func (driver *Driver) GetFile(ctx *server.Context, path string, offset int64) (int64, io.ReadCloser, error) {
+func (driver *Driver) GetFile(ctx *ftp.Context, path string, offset int64) (int64, io.ReadCloser, error) {
 	rPath := driver.realPath(path)
 	f, err := os.Open(rPath)
 	if err != nil {
@@ -132,7 +132,7 @@ func (driver *Driver) GetFile(ctx *server.Context, path string, offset int64) (i
 }
 
 // PutFile implements Driver
-func (driver *Driver) PutFile(ctx *server.Context, destPath string, data io.Reader, offset int64) (int64, error) {
+func (driver *Driver) PutFile(ctx *ftp.Context, destPath string, data io.Reader, offset int64) (int64, error) {
 	rPath := driver.realPath(destPath)
 	var isExist bool
 	f, err := os.Lstat(rPath)
@@ -172,7 +172,7 @@ func (driver *Driver) PutFile(ctx *server.Context, destPath string, data io.Read
 		return bytes, nil
 	}
 
-	of, err := os.OpenFile(rPath, os.O_APPEND|os.O_RDWR, 0660)
+	of, err := os.OpenFile(rPath, os.O_APPEND|os.O_RDWR, 0o660)
 	if err != nil {
 		return 0, err
 	}

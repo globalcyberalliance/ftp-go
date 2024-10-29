@@ -1,15 +1,16 @@
-# server
+# ftp-go
 
-[![](http://gocover.io/_badge/gitea.com/goftp/server)](http://gocover.io/gitea.com/goftp/server)
-[![](https://goreportcard.com/badge/gitea.com/goftp/server)](https://goreportcard.com/report/gitea.com/goftp/server)
+[![GoDoc](https://godoc.org/github.com/globalcyberalliance/ftp-go?status.svg)](https://godoc.org/github.com/globalcyberalliance/ftp-go)
 
 A FTP server framework forked from [github.com/yob/graval](http://github.com/yob/graval) and changed a lot.
 
 Full documentation for the package is available on [godoc](http://pkg.go.dev/goftp.io/server)
 
+_Forked from https://gitea.com/goftp/server._
+
 ## Installation
 
-    go get goftp.io/server/v2
+    go get github.com/globalcyberalliance/ftp-go
 
 ## Usage
 

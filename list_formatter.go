@@ -2,7 +2,7 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package server
+package ftp
 
 import (
 	"bytes"
@@ -34,7 +34,7 @@ func (formatter listFormatter) Detailed() []byte {
 		fmt.Fprint(&buf, lpad(strconv.FormatInt(file.Size(), 10), 12))
 		if file.ModTime().Before(time.Now().AddDate(-1, 0, 0)) {
 			fmt.Fprint(&buf, file.ModTime().Format(" Jan _2  2006 "))
-		} else{
+		} else {
 			fmt.Fprint(&buf, file.ModTime().Format(" Jan _2 15:04 "))
 		}
 		fmt.Fprintf(&buf, "%s\r\n", file.Name())

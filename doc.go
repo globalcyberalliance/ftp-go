@@ -11,4 +11,4 @@ http://www.faqs.org/rfcs/rfc959.html
 http://tools.ietf.org/html/rfc2428
 */
 
-package server
+package ftp

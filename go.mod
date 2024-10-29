@@ -1,13 +1,16 @@
-module goftp.io/server/v2
+module github.com/globalcyberalliance/ftp-go
 
-go 1.12
+go 1.22
 
 require (
-	github.com/jlaffaye/ftp v0.0.0-20190624084859-c1312a7102bf
-	github.com/minio/minio-go/v6 v6.0.46
-	github.com/stretchr/testify v1.3.0
-	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
-	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80 // indirect
-	golang.org/x/sys v0.0.0-20190726091711-fc99dfbffb4e // indirect
-	golang.org/x/text v0.3.2 // indirect
+	github.com/jlaffaye/ftp v0.2.0
+	github.com/stretchr/testify v1.9.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

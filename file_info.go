@@ -2,16 +2,17 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package server
+package ftp
 
 import "os"
 
 type fileInfo struct {
 	os.FileInfo
 
-	mode  os.FileMode
 	owner string
 	group string
+
+	mode os.FileMode
 }
 
 func (f *fileInfo) Mode() os.FileMode {

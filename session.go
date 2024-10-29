@@ -2,10 +2,11 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package server
+package ftp
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
@@ -27,27 +28,28 @@ const (
 
 // Session represents a session between ftp client and the server
 type Session struct {
-	conn          net.Conn
+	dataConn      DataSocket
+	Conn          net.Conn
+	Ctx           context.Context
 	controlReader *bufio.Reader
 	controlWriter *bufio.Writer
-	dataConn      DataSocket
 	server        *Server
+	Data          map[string]interface{} // shared data between different commands
 	id            string
 	curDir        string
 	reqUser       string
 	user          string
 	renameFrom    string
-	lastFilePos   int64
 	preCommand    string
+	clientSoft    string
+	lastFilePos   int64
 	closed        bool
 	tls           bool
-	clientSoft    string
-	Data          map[string]interface{} // shared data between different commands
 }
 
 // RemoteAddr returns the remote ftp client's address
 func (sess *Session) RemoteAddr() net.Addr {
-	return sess.conn.RemoteAddr()
+	return sess.Conn.RemoteAddr()
 }
 
 // LoginUser returns the login user name if login
@@ -85,7 +87,7 @@ func (sess *Session) passiveListenIP() string {
 	if len(sess.PublicIP()) > 0 {
 		listenIP = sess.PublicIP()
 	} else {
-		listenIP = sess.conn.LocalAddr().(*net.TCPAddr).IP.String()
+		listenIP = sess.Conn.LocalAddr().(*net.TCPAddr).IP.String()
 	}
 
 	if listenIP == "::1" {
@@ -114,11 +116,12 @@ func (sess *Session) PassivePort() int {
 
 		return minPort + mrand.Intn(maxPort-minPort)
 	}
-	// let system automatically chose one port
+
+	// Let system automatically choose one port.
 	return 0
 }
 
-// returns a random 20 char string that can be used as a unique session ID
+// newSessionID returns a random 20 char string that can be used as a unique session ID.
 func newSessionID() string {
 	hash := sha256.New()
 	_, err := io.CopyN(hash, rand.Reader, 50)
@@ -149,6 +152,11 @@ func (sess *Session) Serve() {
 
 			break
 		}
+
+		sess.server.notifiers.BeforeCommand(&Context{
+			Sess: sess,
+		}, line)
+
 		sess.receiveLine(line)
 		// QUIT command closes connection, break to avoid error on reading from
 		// closed socket
@@ -162,7 +170,7 @@ func (sess *Session) Serve() {
 
 // Close will manually close this connection, even if the client isn't ready.
 func (sess *Session) Close() {
-	sess.conn.Close()
+	sess.Conn.Close()
 	sess.closed = true
 	sess.reqUser = ""
 	sess.user = ""
@@ -174,10 +182,10 @@ func (sess *Session) Close() {
 
 func (sess *Session) upgradeToTLS() error {
 	sess.log("Upgrading connectiion to TLS")
-	tlsConn := tls.Server(sess.conn, sess.server.tlsConfig)
+	tlsConn := tls.Server(sess.Conn, sess.server.tlsConfig)
 	err := tlsConn.Handshake()
 	if err == nil {
-		sess.conn = tlsConn
+		sess.Conn = tlsConn
 		sess.controlReader = bufio.NewReader(tlsConn)
 		sess.controlWriter = bufio.NewWriter(tlsConn)
 		sess.tls = true
@@ -199,15 +207,15 @@ func (sess *Session) receiveLine(line string) {
 	command, param := sess.parseLine(line)
 	sess.server.Logger.PrintCommand(sess.id, command, param)
 
-	var (
-		commands = sess.server.Commands
-		theCmd   = strings.ToUpper(command)
-		cmdObj   = commands[theCmd]
-	)
+	var commands = sess.server.Commands
+	var theCmd = strings.ToUpper(command)
+	var cmdObj = commands[theCmd]
+
 	if cmdObj == nil {
 		sess.writeMessage(500, "Command not found")
 		return
 	}
+
 	if cmdObj.RequireParam() && param == "" {
 		sess.writeMessage(553, "action aborted, required param missing")
 	} else if sess.server.Options.ForceTLS && !sess.tls && !(cmdObj == commands["AUTH"] && param == "TLS") {
@@ -255,16 +263,16 @@ func (sess *Session) BuildPath(filename string) string {
 // buildPath takes a client supplied path or filename and generates a safe
 // absolute path within their account sandbox.
 //
-//    buildpath("/")
-//    => "/"
-//    buildpath("one.txt")
-//    => "/one.txt"
-//    buildpath("/files/two.txt")
-//    => "/files/two.txt"
-//    buildpath("files/two.txt")
-//    => "/files/two.txt"
-//    buildpath("/../../../../etc/passwd")
-//    => "/etc/passwd"
+//	buildpath("/")
+//	=> "/"
+//	buildpath("one.txt")
+//	=> "/one.txt"
+//	buildpath("/files/two.txt")
+//	=> "/files/two.txt"
+//	buildpath("files/two.txt")
+//	=> "/files/two.txt"
+//	buildpath("/../../../../etc/passwd")
+//	=> "/etc/passwd"
 //
 // The driver implementation is responsible for deciding how to treat this path.
 // Obviously they MUST NOT just read the path off disk. The probably want to
