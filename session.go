@@ -18,6 +18,7 @@ import (
 	"net"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
@@ -26,26 +27,36 @@ const (
 	defaultWelcomeMessage = "Welcome to the Go FTP Server"
 )
 
-// Session represents a session between ftp client and the server
-type Session struct {
-	dataConn      DataSocket
-	Conn          net.Conn
-	Ctx           context.Context
-	controlReader *bufio.Reader
-	controlWriter *bufio.Writer
-	server        *Server
-	Data          map[string]interface{} // shared data between different commands
-	id            string
-	curDir        string
-	reqUser       string
-	user          string
-	renameFrom    string
-	preCommand    string
-	clientSoft    string
-	lastFilePos   int64
-	closed        bool
-	tls           bool
-}
+type (
+	// Context represents a context the driver may want to know
+	Context struct {
+		Sess  *Session
+		Data  map[string]interface{} // share data between middlewares
+		Cmd   string                 // request command on this request
+		Param string                 // request param on this request
+	}
+
+	// Session represents a session between ftp client and the server
+	Session struct {
+		dataConn      DataSocket
+		Conn          net.Conn
+		Ctx           context.Context
+		controlReader *bufio.Reader
+		controlWriter *bufio.Writer
+		server        *Server
+		Data          map[string]interface{} // shared data between different commands
+		id            string
+		curDir        string
+		reqUser       string
+		user          string
+		renameFrom    string
+		preCommand    string
+		clientSoft    string
+		lastFilePos   int64
+		closed        bool
+		tls           bool
+	}
+)
 
 // RemoteAddr returns the remote ftp client's address
 func (sess *Session) RemoteAddr() net.Addr {
@@ -139,15 +150,24 @@ func newSessionID() string {
 // goroutine, so use this channel to be notified when the connection can be
 // cleaned up.
 func (sess *Session) Serve() {
+	defer sess.Close()
+
+	// Leave a slight delay to close the context (needed to allow the connection to gracefully close).
+	defer func() {
+		if recovery := recover(); recovery != nil {
+			sess.log(fmt.Sprintf("recovered from handle panic; recovered=%v; stack=%v", recovery, string(debug.Stack())))
+		}
+	}()
+
 	sess.log("Connection Established")
-	// send welcome
 	sess.writeMessage(220, sess.server.WelcomeMessage)
-	// read commands
+
+	// Read commands.
 	for {
 		line, err := sess.controlReader.ReadString('\n')
 		if err != nil {
 			if err != io.EOF {
-				sess.log(fmt.Sprint("read error:", err))
+				sess.log(fmt.Sprint("Read error:", err))
 			}
 
 			break
@@ -158,13 +178,13 @@ func (sess *Session) Serve() {
 		}, line)
 
 		sess.receiveLine(line)
-		// QUIT command closes connection, break to avoid error on reading from
-		// closed socket
+
+		// QUIT command closes connection, break to avoid error on reading from a closed socket.
 		if sess.closed {
 			break
 		}
 	}
-	sess.Close()
+
 	sess.log("Connection Terminated")
 }
 
@@ -181,16 +201,19 @@ func (sess *Session) Close() {
 }
 
 func (sess *Session) upgradeToTLS() error {
-	sess.log("Upgrading connectiion to TLS")
+	sess.log("Upgrading connection to TLS")
+
 	tlsConn := tls.Server(sess.Conn, sess.server.tlsConfig)
-	err := tlsConn.Handshake()
-	if err == nil {
-		sess.Conn = tlsConn
-		sess.controlReader = bufio.NewReader(tlsConn)
-		sess.controlWriter = bufio.NewWriter(tlsConn)
-		sess.tls = true
+	if err := tlsConn.Handshake(); err != nil {
+		return err
 	}
-	return err
+
+	sess.Conn = tlsConn
+	sess.controlReader = bufio.NewReader(tlsConn)
+	sess.controlWriter = bufio.NewWriter(tlsConn)
+	sess.tls = true
+
+	return nil
 }
 
 // receiveLine accepts a single line FTP command and co-ordinates an
@@ -205,34 +228,40 @@ func (sess *Session) receiveLine(line string) {
 	}()
 
 	command, param := sess.parseLine(line)
+	cmdGiven := strings.ToUpper(command)
 	sess.server.Logger.PrintCommand(sess.id, command, param)
 
-	var commands = sess.server.Commands
-	var theCmd = strings.ToUpper(command)
-	var cmdObj = commands[theCmd]
+	sess.server.CommandsMu.RLock()
+	defer sess.server.CommandsMu.RUnlock()
 
-	if cmdObj == nil {
+	cmdObj, ok := sess.server.Commands[cmdGiven]
+	if !ok {
 		sess.writeMessage(500, "Command not found")
 		return
 	}
 
 	if cmdObj.RequireParam() && param == "" {
 		sess.writeMessage(553, "action aborted, required param missing")
-	} else if sess.server.Options.ForceTLS && !sess.tls && !(cmdObj == commands["AUTH"] && param == "TLS") {
+	} else if sess.server.Options.ForceTLS && !sess.tls && !(cmdObj == sess.server.Commands["AUTH"] && param == "TLS") {
 		sess.writeMessage(534, "Request denied for policy reasons. AUTH TLS required.")
 	} else if cmdObj.RequireAuth() && sess.user == "" {
 		sess.writeMessage(530, "not logged in")
 	} else {
 		cmdObj.Execute(sess, param)
-		sess.preCommand = theCmd
+		sess.preCommand = cmdGiven
 	}
 }
 
 func (sess *Session) parseLine(line string) (string, string) {
 	params := strings.SplitN(strings.Trim(line, "\r\n"), " ", 2)
+	if len(params) == 0 {
+		return "", ""
+	}
+
 	if len(params) == 1 {
 		return params[0], ""
 	}
+
 	return params[0], params[1]
 }
 
@@ -274,9 +303,8 @@ func (sess *Session) BuildPath(filename string) string {
 //	buildpath("/../../../../etc/passwd")
 //	=> "/etc/passwd"
 //
-// The driver implementation is responsible for deciding how to treat this path.
-// Obviously they MUST NOT just read the path off disk. The probably want to
-// prefix the path with something to scope the users access to a sandbox.
+// The driver implementation is responsible for deciding how to treat this path. They must not read the path off disk.
+// They probably want to prefix the path with something to scope the users access to a sandbox.
 func (sess *Session) buildPath(filename string) (fullPath string) {
 	if len(filename) > 0 && filename[0:1] == "/" {
 		fullPath = filepath.Clean(filename)
@@ -310,6 +338,7 @@ func (sess *Session) sendOutofBandDataWriter(data io.ReadCloser) error {
 		sess.dataConn = nil
 		return err
 	}
+
 	message := "Closing data connection, sent " + strconv.Itoa(int(bytes)) + " bytes"
 	sess.writeMessage(226, message)
 	sess.dataConn.Close()

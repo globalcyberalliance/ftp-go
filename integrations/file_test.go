@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalcyberalliance/ftp-go"
 	"github.com/globalcyberalliance/ftp-go/driver/file"
-
-	"github.com/jlaffaye/ftp"
+	ftpCli "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +43,7 @@ func TestFileDriver(t *testing.T) {
 		timeout := time.NewTimer(time.Millisecond * 500)
 
 		for {
-			f, err := ftp.Connect("localhost:2122")
+			f, err := ftpCli.Connect("localhost:2122")
 			if err != nil && len(timeout.C) == 0 { // Retry errors
 				continue
 			}
@@ -69,7 +69,7 @@ func TestFileDriver(t *testing.T) {
 			assert.EqualValues(t, 1, len(entries))
 			assert.EqualValues(t, "server_test.go", entries[0].Name)
 			assert.EqualValues(t, 4, entries[0].Size)
-			assert.EqualValues(t, ftp.EntryTypeFile, entries[0].Type)
+			assert.EqualValues(t, ftpCli.EntryTypeFile, entries[0].Type)
 
 			curDir, err := f.CurrentDir()
 			assert.NoError(t, err)
@@ -166,17 +166,16 @@ func TestLogin(t *testing.T) {
 	// Give server 0.5 seconds to get to the listening state
 	timeout := time.NewTimer(time.Millisecond * 500)
 	for {
-		f, err := ftp.Connect("localhost:2123")
+		f, err := ftpCli.Connect("localhost:2123")
 		if err != nil && len(timeout.C) == 0 { // Retry errors
 			continue
 		}
-		assert.NoError(t, err)
 
+		assert.NoError(t, err)
 		assert.NoError(t, f.Login("admin", "admin"))
 		assert.Error(t, f.Login("admin", ""))
+		assert.NoError(t, f.Quit())
 
-		err = f.Quit()
-		assert.NoError(t, err)
 		break
 	}
 

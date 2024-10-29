@@ -784,16 +784,19 @@ func (cmd commandPass) RequireAuth() bool {
 
 func (cmd commandPass) Execute(sess *Session, param string) {
 	auth := sess.server.Auth
-	// If Driver implements Auth then call that instead of the Server version
+
+	// If the driver implements Auth, call that instead of the server version.
 	if driverAuth, found := sess.server.Driver.(Auth); found {
 		auth = driverAuth
 	}
+
 	ctx := Context{
 		Sess:  sess,
 		Cmd:   "PASS",
 		Param: param,
 		Data:  make(map[string]interface{}),
 	}
+
 	ok, err := auth.CheckPasswd(&ctx, sess.reqUser, param)
 	sess.server.notifiers.AfterUserLogin(&ctx, sess.reqUser, param, ok, err)
 	if err != nil {
@@ -830,6 +833,7 @@ func (cmd commandPasv) RequireAuth() bool {
 
 func (cmd commandPasv) Execute(sess *Session, param string) {
 	listenIP := sess.passiveListenIP()
+
 	// TODO: IPv6 for this command is not implemented
 	if strings.HasPrefix(listenIP, "::") {
 		sess.writeMessage(550, "Action not taken")
@@ -875,11 +879,13 @@ func (cmd commandPort) Execute(sess *Session, param string) {
 	portTwo, _ := strconv.Atoi(nums[5])
 	port := (portOne * 256) + portTwo
 	host := nums[0] + "." + nums[1] + "." + nums[2] + "." + nums[3]
+
 	socket, err := newActiveSocket(sess, host, port)
 	if err != nil {
 		sess.writeMessage(425, "Data connection failed")
 		return
 	}
+
 	sess.dataConn = socket
 	sess.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
 }
@@ -948,20 +954,24 @@ func (cmd commandRetr) Execute(sess *Session, param string) {
 	if sess.preCommand != "REST" {
 		sess.lastFilePos = -1
 	}
+
 	defer func() {
 		sess.lastFilePos = -1
 	}()
+
 	ctx := Context{
 		Sess:  sess,
 		Cmd:   "RETR",
 		Param: param,
 		Data:  make(map[string]interface{}),
 	}
+
 	sess.server.notifiers.BeforeDownloadFile(&ctx, path)
 	readPos := sess.lastFilePos
 	if readPos < 0 {
 		readPos = 0
 	}
+
 	size, data, err := sess.server.Driver.GetFile(&ctx, path, readPos)
 	if err == nil {
 		defer data.Close()
@@ -1030,6 +1040,7 @@ func (cmd commandRnfr) Execute(sess *Session, param string) {
 		sess.writeMessage(550, fmt.Sprint("Action not taken: ", err))
 		return
 	}
+
 	sess.renameFrom = p
 	sess.writeMessage(350, "Requested file action pending further information.")
 }
@@ -1069,8 +1080,7 @@ func (cmd commandRnto) Execute(sess *Session, param string) {
 	}
 }
 
-// cmdRmd responds to the RMD FTP command. It allows the client to delete a
-// directory.
+// cmdRmd responds to the RMD FTP command. It allows the client to delete a directory.
 type commandRmd struct{}
 
 func (cmd commandRmd) IsExtend() bool {
@@ -1089,8 +1099,7 @@ func (cmd commandRmd) Execute(sess *Session, param string) {
 	executeRmd("RMD", sess, param)
 }
 
-// cmdXRmd responds to the RMD FTP command. It allows the client to delete a
-// directory.
+// cmdXRmd responds to the RMD FTP command. It allows the client to delete a directory.
 type commandXRmd struct{}
 
 func (cmd commandXRmd) IsExtend() bool {
@@ -1111,12 +1120,14 @@ func (cmd commandXRmd) Execute(sess *Session, param string) {
 
 func executeRmd(cmd string, sess *Session, param string) {
 	p := sess.buildPath(param)
+
 	ctx := Context{
 		Sess:  sess,
 		Cmd:   cmd,
 		Param: param,
 		Data:  make(map[string]interface{}),
 	}
+
 	if param == "/" || param == "" {
 		sess.writeMessage(550, "Directory / cannot be deleted")
 		return
@@ -1403,7 +1414,7 @@ func (cmd commandStat) RequireAuth() bool {
 }
 
 func (cmd commandStat) Execute(sess *Session, param string) {
-	// system stat
+	// System stat.
 	if param == "" {
 		sess.writeMessage(211, fmt.Sprintf("%s FTP server status:\nVersion %s"+
 			"Connected to %s (%s)\n"+
@@ -1422,17 +1433,19 @@ func (cmd commandStat) Execute(sess *Session, param string) {
 		Data:  make(map[string]interface{}),
 	}
 
-	// file or directory stat
-	path := sess.buildPath(param)
-	stat, err := sess.server.Driver.Stat(&ctx, path)
+	// File or directory stat.
+	buildPath := sess.buildPath(param)
+
+	stat, err := sess.server.Driver.Stat(&ctx, buildPath)
 	if err != nil {
 		log.Printf("Size: error(%s)", err)
-		sess.writeMessage(450, fmt.Sprintf("path %s not found", path))
+		sess.writeMessage(450, fmt.Sprintf("path %s not found", buildPath))
 	} else {
 		var files []FileInfo
+
 		if stat.IsDir() {
-			err = sess.server.Driver.ListDir(&ctx, path, func(f os.FileInfo) error {
-				info, err := convertFileInfo(sess, f, filepath.Join(path, f.Name()))
+			err = sess.server.Driver.ListDir(&ctx, buildPath, func(f os.FileInfo) error {
+				info, err := convertFileInfo(sess, f, filepath.Join(buildPath, f.Name()))
 				if err != nil {
 					return err
 				}
@@ -1445,11 +1458,12 @@ func (cmd commandStat) Execute(sess *Session, param string) {
 			}
 			sess.writeMessage(213, "Opening ASCII mode data connection for file list")
 		} else {
-			info, err := convertFileInfo(sess, stat, path)
+			info, err := convertFileInfo(sess, stat, buildPath)
 			if err != nil {
 				sess.writeMessage(550, err.Error())
 				return
 			}
+
 			files = append(files, info)
 			sess.writeMessage(212, "Opening ASCII mode data connection for file list")
 		}
@@ -1457,8 +1471,7 @@ func (cmd commandStat) Execute(sess *Session, param string) {
 	}
 }
 
-// commandStor responds to the STOR FTP command. It allows the user to upload a
-// new file.
+// commandStor responds to the STOR FTP command. It allows the user to upload a new file.
 type commandStor struct{}
 
 func (cmd commandStor) IsExtend() bool {
@@ -1504,13 +1517,10 @@ func (cmd commandStor) Execute(sess *Session, param string) {
 
 // commandStru responds to the STRU FTP command.
 //
-// like the MODE and TYPE commands, stru[cture] dates back to a time when the
-// FTP protocol was more aware of the content of the files it was transferring,
-// and would sometimes be expected to translate things like EOL markers on the
-// fly.
+// Like the MODE and TYPE commands, stru[cture] dates back to a time when the FTP protocol was more aware of the content
+// of the files it was transferring, and would sometimes be expected to translate things like EOL markers on the fly.
 //
-// These days files are sent unmodified, and F(ile) mode is the only one we
-// really need to support.
+// These days files are sent unmodified, and F(ile) mode is the only one we really need to support.
 type commandStru struct{}
 
 func (cmd commandStru) IsExtend() bool {
@@ -1554,14 +1564,11 @@ func (cmd commandSyst) Execute(sess *Session, param string) {
 
 // commandType responds to the TYPE FTP command.
 //
-//	like the MODE and STRU commands, TYPE dates back to a time when the FTP
-//	protocol was more aware of the content of the files it was transferring, and
-//	would sometimes be expected to translate things like EOL markers on the fly.
+// Like the MODE and STRU commands, TYPE dates back to a time when the FTP protocol was more aware of the content of the files it was transferring, and  would sometimes be expected to translate things like EOL markers on the fly.
 //
-//	Valid options were A(SCII), I(mage), E(BCDIC) or LN (for local type). Since
-//	we plan to just accept bytes from the client unchanged, I think Image mode is
-//	adequate. The RFC requires we accept ASCII mode however, so accept it, but
-//	ignore it.
+// Valid options were A(SCII), I(mage), E(BCDIC) or LN (for local type). Since we plan to just accept bytes from the
+// client unchanged, I think Image mode is adequate. The RFC requires we accept ASCII mode however, so accept it, but
+// ignore it.
 type commandType struct{}
 
 func (cmd commandType) IsExtend() bool {

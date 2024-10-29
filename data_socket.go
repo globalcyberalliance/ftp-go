@@ -6,6 +6,7 @@ package ftp
 
 import (
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -19,34 +20,35 @@ import (
 	"github.com/globalcyberalliance/ftp-go/ratelimit"
 )
 
-// DataSocket describes a data socket is used to send non-control data between the client and
-// server.
-type DataSocket interface {
-	Host() string
+type (
+	// DataSocket describes a data socket is used to send non-control data between the client and server.
+	DataSocket interface {
+		Host() string
 
-	Port() int
+		Port() int
 
-	// the standard io.Reader interface
-	Read(p []byte) (n int, err error)
+		// Read implements the standard io.Reader interface.
+		Read(p []byte) (n int, err error)
 
-	// the standard io.ReaderFrom interface
-	ReadFrom(r io.Reader) (int64, error)
+		// ReadFrom implements the standard io.ReaderFrom interface.
+		ReadFrom(r io.Reader) (int64, error)
 
-	// the standard io.Writer interface
-	Write(p []byte) (n int, err error)
+		// Write implements the standard io.Writer interface.
+		Write(p []byte) (n int, err error)
 
-	// the standard io.Closer interface
-	Close() error
-}
+		// Close implements the standard io.Closer interface.
+		Close() error
+	}
 
-type activeSocket struct {
-	conn   *net.TCPConn
-	reader io.Reader
-	writer io.Writer
-	sess   *Session
-	host   string
-	port   int
-}
+	activeSocket struct {
+		conn   *net.TCPConn
+		reader io.Reader
+		writer io.Writer
+		sess   *Session
+		host   string
+		port   int
+	}
+)
 
 func newActiveSocket(sess *Session, remote string, port int) (DataSocket, error) {
 	connectTo := net.JoinHostPort(remote, strconv.Itoa(port))
@@ -113,7 +115,7 @@ type passiveSocket struct {
 	lock    sync.Mutex // protects conn and err
 }
 
-// Detect if an error is "bind: address already in use"
+// isErrorAddressAlreadyInUse detects if an error is "bind: address already in use"
 //
 // Originally from https://stackoverflow.com/a/52152912/164234
 func isErrorAddressAlreadyInUse(err error) bool {
@@ -121,21 +123,26 @@ func isErrorAddressAlreadyInUse(err error) bool {
 	if !ok {
 		return false
 	}
-	errSyscallError, ok := errOpError.Err.(*os.SyscallError)
-	if !ok {
+
+	var errSyscallError *os.SyscallError
+	if !errors.As(errOpError.Err, &errSyscallError) {
 		return false
 	}
-	errErrno, ok := errSyscallError.Err.(syscall.Errno)
-	if !ok {
+
+	var errErrno syscall.Errno
+	if !errors.As(errSyscallError.Err, &errErrno) {
 		return false
 	}
-	if errErrno == syscall.EADDRINUSE {
+
+	if errors.Is(errErrno, syscall.EADDRINUSE) {
 		return true
 	}
+
 	const WSAEADDRINUSE = 10048
 	if runtime.GOOS == "windows" && errErrno == WSAEADDRINUSE {
 		return true
 	}
+
 	return false
 }
 
@@ -152,7 +159,7 @@ func (sess *Session) newPassiveSocket() (DataSocket, error) {
 		socket.port = sess.PassivePort()
 		err = socket.ListenAndServe()
 		if err != nil && socket.port != 0 && isErrorAddressAlreadyInUse(err) {
-			// choose a different port on error already in use
+			// Choose a different port on error already in use.
 			continue
 		}
 		break
@@ -185,8 +192,8 @@ func (socket *passiveSocket) ReadFrom(r io.Reader) (int64, error) {
 		return 0, socket.err
 	}
 
-	// For normal TCPConn, this will use sendfile syscall; if not,
-	// it will just downgrade to normal read/write procedure
+	// For normal TCPConn, this will use sendfile syscall; if not, it will just downgrade to normal read/write
+	// procedure.
 	return io.Copy(socket.writer, r)
 }
 
@@ -222,8 +229,7 @@ func (socket *passiveSocket) ListenAndServe() (err error) {
 		return err
 	}
 
-	// The timeout, for a remote client to establish connection
-	// with a PASV style data connection.
+	// The timeout, for a remote client to establish connection with a PASV style data connection.
 	const acceptTimeout = 60 * time.Second
 	err = tcplistener.SetDeadline(time.Now().Add(acceptTimeout))
 	if err != nil {
@@ -246,6 +252,7 @@ func (socket *passiveSocket) ListenAndServe() (err error) {
 	}
 
 	socket.lock.Lock()
+
 	go func() {
 		defer socket.lock.Unlock()
 
@@ -254,11 +261,14 @@ func (socket *passiveSocket) ListenAndServe() (err error) {
 			socket.err = err
 			return
 		}
+
 		socket.err = nil
 		socket.conn = conn
 		socket.reader = ratelimit.Reader(socket.conn, socket.sess.server.rateLimiter)
 		socket.writer = ratelimit.Writer(socket.conn, socket.sess.server.rateLimiter)
+
 		_ = listener.Close()
 	}()
+
 	return nil
 }

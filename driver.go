@@ -84,7 +84,7 @@ func (driver *MultiDriver) Stat(ctx *Context, path string) (os.FileInfo, error) 
 			return driver.Stat(ctx, strings.TrimPrefix(path, prefix))
 		}
 	}
-	return nil, errors.New("Not a file")
+	return nil, errors.New("not a file")
 }
 
 // ListDir implements Driver
@@ -94,7 +94,7 @@ func (driver *MultiDriver) ListDir(ctx *Context, path string, callback func(os.F
 			return driver.ListDir(ctx, strings.TrimPrefix(path, prefix), callback)
 		}
 	}
-	return errors.New("Not a directory")
+	return errors.New("not a directory")
 }
 
 // DeleteDir implements Driver
@@ -104,7 +104,7 @@ func (driver *MultiDriver) DeleteDir(ctx *Context, path string) error {
 			return driver.DeleteDir(ctx, strings.TrimPrefix(path, prefix))
 		}
 	}
-	return errors.New("Not a directory")
+	return errors.New("not a directory")
 }
 
 // DeleteFile implements Driver
@@ -115,7 +115,7 @@ func (driver *MultiDriver) DeleteFile(ctx *Context, path string) error {
 		}
 	}
 
-	return errors.New("Not a file")
+	return errors.New("not a file")
 }
 
 // Rename implements Driver
@@ -126,7 +126,7 @@ func (driver *MultiDriver) Rename(ctx *Context, fromPath string, toPath string) 
 		}
 	}
 
-	return errors.New("Not a file")
+	return errors.New("not a file")
 }
 
 // MakeDir implements Driver
@@ -136,7 +136,7 @@ func (driver *MultiDriver) MakeDir(ctx *Context, path string) error {
 			return driver.MakeDir(ctx, strings.TrimPrefix(path, prefix))
 		}
 	}
-	return errors.New("Not a directory")
+	return errors.New("not a directory")
 }
 
 // GetFile implements Driver
@@ -147,7 +147,7 @@ func (driver *MultiDriver) GetFile(ctx *Context, path string, offset int64) (int
 		}
 	}
 
-	return 0, nil, errors.New("Not a file")
+	return 0, nil, errors.New("not a file")
 }
 
 // PutFile implements Driver
@@ -158,5 +158,5 @@ func (driver *MultiDriver) PutFile(ctx *Context, destPath string, data io.Reader
 		}
 	}
 
-	return 0, errors.New("Not a file")
+	return 0, errors.New("not a file")
 }

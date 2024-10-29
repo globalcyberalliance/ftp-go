@@ -12,8 +12,7 @@ import (
 )
 
 // Driver implements Driver directly read local file system
-type Driver struct {
-}
+type Driver struct{}
 
 // NewDriver implements Driver
 func NewDriver() (ftp.Driver, error) {
@@ -57,10 +56,5 @@ func (driver *Driver) GetFile(ctx *ftp.Context, path string, offset int64) (int6
 
 // PutFile implements Driver
 func (driver *Driver) PutFile(ctx *ftp.Context, destPath string, data io.Reader, offset int64) (int64, error) {
-	bytes, err := io.ReadAll(data)
-	if err != nil {
-		return 0, err
-	}
-
-	return int64(len(bytes)), nil
+	return 0, nil
 }

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/globalcyberalliance/ftp-go/ratelimit"
@@ -20,8 +21,7 @@ import (
 var (
 	version = "2.0beta"
 
-	// ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown
-	// was requested.
+	// ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown was requested.
 	ErrServerClosed = errors.New("ftp: Server closed")
 )
 
@@ -75,6 +75,9 @@ type (
 		// Timeout is used to restrict the total length of a session
 		Timeout time.Duration
 
+		// CommandsMu controls access to the Commands map
+		CommandsMu sync.RWMutex
+
 		// use tls, default is false
 		TLS bool
 
@@ -120,16 +123,19 @@ func optsWithDefaults(opts *Options) *Options {
 	if opts == nil {
 		opts = &Options{}
 	}
+
 	if opts.Hostname == "" {
 		newOpts.Hostname = "::"
 	} else {
 		newOpts.Hostname = opts.Hostname
 	}
+
 	if opts.Port == 0 {
 		newOpts.Port = 2121
 	} else {
 		newOpts.Port = opts.Port
 	}
+
 	newOpts.Driver = opts.Driver
 	if opts.Name == "" {
 		newOpts.Name = "Go FTP Server"
@@ -170,7 +176,6 @@ func optsWithDefaults(opts *Options) *Options {
 	newOpts.KeyFile = opts.KeyFile
 	newOpts.CertFile = opts.CertFile
 	newOpts.ExplicitFTPS = opts.ExplicitFTPS
-
 	newOpts.PublicIP = opts.PublicIP
 	newOpts.PassivePorts = opts.PassivePorts
 	newOpts.RateLimit = opts.RateLimit
@@ -183,7 +188,7 @@ func optsWithDefaults(opts *Options) *Options {
 // probably look something like this:
 //
 //	driver := &MyDriver{}
-//	opts    := &server.Options{
+//	opts   := &server.Options{
 //	  Driver: driver,
 //	  Auth: auth,
 //	  Port: 2000,
@@ -196,15 +201,15 @@ func NewServer(opts *Options) (*Server, error) {
 	if opts.Perm == nil {
 		return nil, errors.New("No perm implementation")
 	}
-	s := new(Server)
-	s.Options = opts
-	s.listenTo = net.JoinHostPort(opts.Hostname, strconv.Itoa(opts.Port))
-	s.logger = opts.Logger
 
-	var (
-		feats    = "Extensions supported:\n%s"
-		featCmds = " UTF8\n"
-	)
+	s := &Server{
+		Options:  opts,
+		listenTo: net.JoinHostPort(opts.Hostname, strconv.Itoa(opts.Port)),
+		logger:   opts.Logger,
+	}
+
+	feats := "Extensions supported:\n%s"
+	featCmds := " UTF8\n"
 
 	for k, v := range s.Commands {
 		if v.IsExtend() {
@@ -215,20 +220,20 @@ func NewServer(opts *Options) (*Server, error) {
 	if opts.TLS {
 		featCmds += " AUTH TLS\n PBSZ\n PROT\n"
 	}
+
 	s.feats = fmt.Sprintf(feats, featCmds)
 	s.rateLimiter = ratelimit.New(opts.RateLimit)
 
 	return s, nil
 }
 
-// RegisterNotifer registers a notifier
-func (server *Server) RegisterNotifer(notifier Notifier) {
+// RegisterNotifier registers a notifier
+func (server *Server) RegisterNotifier(notifier Notifier) {
 	server.notifiers = append(server.notifiers, notifier)
 }
 
-// NewConn constructs a new object that will handle the FTP protocol over
-// an active net.TCPConn. The TCP connection should already be open before
-// it is handed to this function.
+// NewConn constructs a new object that will handle the FTP protocol over an active net.TCPConn. The TCP connection
+// should already be open before it is handed to this function.
 func (server *Server) newSession(id string, tcpConn net.Conn) *Session {
 	return &Session{
 		id:            id,
@@ -262,13 +267,11 @@ func simpleTLSConfig(certFile, keyFile string) (*tls.Config, error) {
 	return config, nil
 }
 
-// ListenAndServe asks a new Server to begin accepting client connections. It
-// accepts no arguments - all configuration is provided via the NewServer
-// function.
+// ListenAndServe asks a new Server to begin accepting client connections. It accepts no arguments - all configuration
+// is provided via the NewServer function.
 //
-// If the server fails to start for any reason, an error will be returned. Common
-// errors are trying to bind to a privileged port or something else is already
-// listening on the same port.
+// If the server fails to start for any reason, an error will be returned. Common errors are trying to bind to a
+// privileged port or something else is already listening on the same port.
 func (server *Server) ListenAndServe() error {
 	var listener net.Listener
 	var err error
@@ -302,7 +305,9 @@ func (server *Server) Serve(l net.Listener) error {
 	server.listener = l
 	server.ctx, server.cancel = context.WithCancel(context.Background())
 	defer server.cancel()
+
 	sessionID := newSessionID()
+
 	for {
 		rawConn, err := server.listener.Accept()
 		if err != nil {
@@ -327,8 +332,6 @@ func (server *Server) Serve(l net.Listener) error {
 			cancel: cancel,
 			ctx:    ctx,
 		}
-
-		// TODO: Rob, here
 
 		ftpConn := server.newSession(sessionID, conn)
 		go ftpConn.Serve()

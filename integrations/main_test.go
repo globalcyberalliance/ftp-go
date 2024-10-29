@@ -7,6 +7,7 @@ package integrations
 import (
 	"testing"
 
+	"github.com/globalcyberalliance/ftp-go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,8 +15,9 @@ func runServer(t *testing.T, opt *ftp.Options, notifiers []ftp.Notifier, execute
 	s, err := ftp.NewServer(opt)
 	assert.NoError(t, err)
 	for _, notifier := range notifiers {
-		s.RegisterNotifer(notifier)
+		s.RegisterNotifier(notifier)
 	}
+
 	go func() {
 		err := s.ListenAndServe()
 		assert.EqualError(t, err, ftp.ErrServerClosed.Error())

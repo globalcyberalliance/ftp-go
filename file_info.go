@@ -8,11 +8,9 @@ import "os"
 
 type fileInfo struct {
 	os.FileInfo
-
 	owner string
 	group string
-
-	mode os.FileMode
+	mode  os.FileMode
 }
 
 func (f *fileInfo) Mode() os.FileMode {

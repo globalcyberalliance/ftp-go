@@ -5,6 +5,7 @@ package main
 import (
 	"log"
 
+	"github.com/globalcyberalliance/ftp-go"
 	"github.com/globalcyberalliance/ftp-go/driver/file"
 )
 
@@ -27,7 +28,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := s.ListenAndServe(); err != nil {
+	if err = s.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

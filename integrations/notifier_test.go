@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalcyberalliance/ftp-go"
 	"github.com/globalcyberalliance/ftp-go/driver/file"
-
-	"github.com/jlaffaye/ftp"
+	ftpCli "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,6 +23,12 @@ var _ ftp.Notifier = &mockNotifier{}
 type mockNotifier struct {
 	actions []string
 	lock    sync.Mutex
+}
+
+func (m *mockNotifier) BeforeCommand(ctx *ftp.Context, command string) {
+	m.lock.Lock()
+	m.actions = append(m.actions, "BeforeCommand")
+	m.lock.Unlock()
 }
 
 func (m *mockNotifier) BeforeLoginUser(ctx *ftp.Context, userName string) {
@@ -145,7 +151,7 @@ func TestNotification(t *testing.T) {
 		timeout := time.NewTimer(time.Millisecond * 500)
 
 		for {
-			f, err := ftp.Connect("localhost:2121")
+			f, err := ftpCli.Connect("localhost:2121")
 			if err != nil && len(timeout.C) == 0 { // Retry errors
 				continue
 			}
@@ -170,27 +176,21 @@ func TestNotification(t *testing.T) {
 			assert.EqualValues(t, "st", string(buf))
 			assetMockNotifier(t, mock, []string{"BeforeDownloadFile", "AfterFileDownloaded"})
 
-			err = f.Rename("/server_test.go", "/test.go")
-			assert.NoError(t, err)
+			assert.NoError(t, f.Rename("/server_test.go", "/test.go"))
 
-			err = f.MakeDir("/src")
-			assert.NoError(t, err)
+			assert.NoError(t, f.MakeDir("/src"))
 			assetMockNotifier(t, mock, []string{"BeforeCreateDir", "AfterDirCreated"})
 
-			err = f.Delete("/test.go")
-			assert.NoError(t, err)
+			assert.NoError(t, f.Delete("/test.go"))
 			assetMockNotifier(t, mock, []string{"BeforeDeleteFile", "AfterFileDeleted"})
 
-			err = f.ChangeDir("/src")
-			assert.NoError(t, err)
+			assert.NoError(t, f.ChangeDir("/src"))
 			assetMockNotifier(t, mock, []string{"BeforeChangeCurDir", "AfterCurDirChanged"})
 
-			err = f.RemoveDir("/src")
-			assert.NoError(t, err)
+			assert.NoError(t, f.RemoveDir("/src"))
 			assetMockNotifier(t, mock, []string{"BeforeDeleteDir", "AfterDirDeleted"})
 
-			err = f.Quit()
-			assert.NoError(t, err)
+			assert.NoError(t, f.Quit())
 
 			break
 		}
