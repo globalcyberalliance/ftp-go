@@ -55,5 +55,6 @@ actually useful or relevant 24 years after RFC959 was published:
 For a history lesson, check out Appendix III of RCF959. It lists the preceding(obsolete) RFC documents that relate to
 file transfers, including the ye old RFC114 from 1971, "A File Transfer Protocol"
 
-This library is heavily based on [em-ftpd](https://github.com/yob/em-ftpd), an FTPd framework with similar design goals within the ruby and 
+This library is heavily based on [em-ftpd](https://github.com/yob/em-ftpd), an FTPd framework with similar design goals
+within the ruby and
 EventMachine ecosystems.

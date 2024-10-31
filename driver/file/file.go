@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	ftp "github.com/globalcyberalliance/ftp-go"
+	"github.com/globalcyberalliance/ftp-go"
 )
 
 // Driver implements Driver directly read local file system
