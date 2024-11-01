@@ -54,6 +54,9 @@ type (
 		// Public IP of the server
 		PublicIP string
 
+		// Disable use of passive ports
+		DisablePassive bool
+
 		// Passive ports
 		PassivePorts string
 
@@ -165,12 +168,19 @@ func optsWithDefaults(opts *Options) *Options {
 		newOpts.Commands = opts.Commands
 	}
 
+	if opts.DisablePassive {
+		if _, ok := newOpts.Commands["PASV"]; ok {
+			delete(newOpts.Commands, "PASV")
+		}
+	}
+
 	if opts.Timeout.Seconds() <= 0 {
 		newOpts.Timeout = 60 * time.Second
 	} else {
 		newOpts.Timeout = opts.Timeout
 	}
 
+	newOpts.DisablePassive = opts.DisablePassive
 	newOpts.Perm = opts.Perm
 	newOpts.TLS = opts.TLS
 	newOpts.KeyFile = opts.KeyFile
