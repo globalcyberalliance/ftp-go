@@ -14,6 +14,7 @@ type Notifier interface {
 	BeforeCreateDir(ctx *Context, dstPath string)
 	BeforeDeleteDir(ctx *Context, dstPath string)
 	BeforeDownloadFile(ctx *Context, dstPath string)
+	AfterCommand(ctx *Context, command string, supported bool)
 	AfterUserLogin(ctx *Context, userName, password string, passMatched bool, err error)
 	AfterFilePut(ctx *Context, dstPath string, size int64, err error)
 	AfterFileDeleted(ctx *Context, dstPath string, err error)
@@ -72,6 +73,12 @@ func (notifiers notifierList) BeforeDeleteDir(ctx *Context, dstPath string) {
 func (notifiers notifierList) BeforeDownloadFile(ctx *Context, dstPath string) {
 	for _, notifier := range notifiers {
 		notifier.BeforeDownloadFile(ctx, dstPath)
+	}
+}
+
+func (notifiers notifierList) AfterCommand(ctx *Context, command string, supported bool) {
+	for _, notifier := range notifiers {
+		notifier.AfterCommand(ctx, command, supported)
 	}
 }
 
@@ -152,6 +159,10 @@ func (NullNotifier) BeforeDeleteDir(ctx *Context, dstPath string) {
 
 // BeforeDownloadFile implements Notifier
 func (NullNotifier) BeforeDownloadFile(ctx *Context, dstPath string) {
+}
+
+// AfterCommand implements Notifier
+func (NullNotifier) AfterCommand(ctx *Context, command string, supported bool) {
 }
 
 // AfterUserLogin implements Notifier

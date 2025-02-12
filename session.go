@@ -235,6 +235,9 @@ func (sess *Session) receiveLine(line string) {
 	defer sess.server.CommandsMu.RUnlock()
 
 	cmdObj, ok := sess.server.Commands[cmdGiven]
+	sess.server.notifiers.AfterCommand(&Context{
+		Sess: sess,
+	}, cmdGiven, ok)
 	if !ok {
 		sess.writeMessage(500, "Command not found")
 		return
