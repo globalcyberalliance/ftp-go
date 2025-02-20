@@ -175,7 +175,7 @@ func (sess *Session) Serve() {
 
 		sess.server.notifiers.BeforeCommand(&Context{
 			Sess: sess,
-		}, line)
+		}, strings.Trim(line, "\r\n"))
 
 		sess.receiveLine(line)
 
@@ -237,7 +237,7 @@ func (sess *Session) receiveLine(line string) {
 	cmdObj, ok := sess.server.Commands[cmdGiven]
 	sess.server.notifiers.AfterCommand(&Context{
 		Sess: sess,
-	}, cmdGiven, ok)
+	}, strings.Trim(line, "\r\n"), ok)
 	if !ok {
 		sess.writeMessage(500, "Command not found")
 		return
