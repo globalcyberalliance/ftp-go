@@ -58,6 +58,11 @@ type (
 	}
 )
 
+// LocalAddr returns the local ftp server's address
+func (sess *Session) LocalAddr() net.Addr {
+	return sess.Conn.LocalAddr()
+}
+
 // RemoteAddr returns the remote ftp client's address
 func (sess *Session) RemoteAddr() net.Addr {
 	return sess.Conn.RemoteAddr()
