@@ -15,7 +15,7 @@ type Limiter struct {
 	count int64
 }
 
-// 0 means don't limit.
+// New creates a limiter for transfer speed, parameter rate means bytes per second. 0 means don't limit.
 func New(rate int64) *Limiter {
 	return &Limiter{
 		rate:  time.Duration(rate),

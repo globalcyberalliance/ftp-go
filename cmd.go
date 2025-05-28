@@ -283,7 +283,7 @@ func (cmd commandCwd) Execute(sess *Session, param string) {
 	}
 }
 
-// a file.
+// commandDele responds to the DELE FTP command. It allows the client to delete a file.
 type commandDele struct{}
 
 func (cmd commandDele) IsExtend() bool {
@@ -437,9 +437,8 @@ func (cmd commandLprt) Execute(sess *Session, param string) {
 	sess.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
 }
 
-// commandEpsv responds to the EPSV FTP command. It allows the client to
-// request a passive data socket with more options than the original PASV
-// command. It mainly adds ipv6 support, although we don't support that yet.
+// commandEpsv responds to the EPSV FTP command. It allows the client to request a passive data socket with more options
+// than the original PASV command. It mainly adds IPv6 support, although we don't support that yet.
 type commandEpsv struct{}
 
 func (cmd commandEpsv) IsExtend() bool {
@@ -466,8 +465,7 @@ func (cmd commandEpsv) Execute(sess *Session, param string) {
 	sess.writeMessage(229, msg)
 }
 
-// commandList responds to the LIST FTP command. It allows the client to retrieve
-// a detailed listing of the contents of a directory.
+// commandList responds to the LIST FTP command. It allows the client to retrieve a detailed listing of a directory.
 type commandList struct{}
 
 func (cmd commandList) IsExtend() bool {
@@ -576,8 +574,8 @@ func parseListParam(param string) (path string) {
 	return path
 }
 
-// commandNlst responds to the NLST FTP command. It allows the client to
-// retrieve a list of filenames in the current directory.
+// commandNlst responds to the NLST FTP command. It allows the client to retrieve a list of filenames in the current
+// directory.
 type commandNlst struct{}
 
 func (cmd commandNlst) IsExtend() bool {
@@ -650,8 +648,7 @@ func (cmd commandNlst) Execute(sess *Session, param string) {
 	sess.sendOutofbandData(listFormatter(files).Short())
 }
 
-// commandMdtm responds to the MDTM FTP command. It allows the client to
-// retrieve the last modified time of a file.
+// commandMdtm responds to the MDTM FTP command. It allows the client to retrieve the last modified time of a file.
 type commandMdtm struct{}
 
 func (cmd commandMdtm) IsExtend() bool {
@@ -681,7 +678,7 @@ func (cmd commandMdtm) Execute(sess *Session, param string) {
 	}
 }
 
-// a new directory.
+// commandMkd responds to the MKD FTP command. It allows the client to create a new directory.
 type commandMkd struct{}
 
 func (cmd commandMkd) IsExtend() bool {
@@ -716,10 +713,8 @@ func (cmd commandMkd) Execute(sess *Session, param string) {
 
 // cmdMode responds to the MODE FTP command.
 //
-// the original FTP spec had various options for hosts to negotiate how data
-// would be sent over the data socket, In reality these days (S)tream mode
-// is all that is used for the mode - data is just streamed down the data
-// socket unchanged.
+// The original FTP spec had various options for hosts to negotiate how data would be sent over the data socket.
+// These days (S)tream mode is all that is used for the mode - data is just streamed down the data socket unchanged.
 type commandMode struct{}
 
 func (cmd commandMode) IsExtend() bool {
@@ -764,7 +759,7 @@ func (cmd commandNoop) Execute(sess *Session, param string) {
 	sess.writeMessage(200, "OK")
 }
 
-// supplied username and password are valid.
+// commandPass respond to the PASS FTP command by asking the driver if the supplied username and password are valid.
 type commandPass struct{}
 
 func (cmd commandPass) IsExtend() bool {
@@ -852,7 +847,9 @@ func (cmd commandPasv) Execute(sess *Session, param string) {
 	sess.writeMessage(227, msg)
 }
 
-// is requesting that we connect to it.
+// commandPort responds to the PORT FTP command.
+//
+// The client has opened a listening socket for sending out of band data and is requesting that we connect to it.
 type commandPort struct{}
 
 func (cmd commandPort) IsExtend() bool {
@@ -926,6 +923,7 @@ func (cmd commandQuit) Execute(sess *Session, param string) {
 	sess.Close()
 }
 
+// commandRetr responds to the RETR FTP command. It allows the client to download a file.
 // REST can be followed by APPE, STOR, or RETR.
 type commandRetr struct{}
 

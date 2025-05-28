@@ -14,7 +14,7 @@ import (
 
 type listFormatter []FileInfo
 
-// one per line.
+// Short returns a string that lists the collection of files by name only, one per line.
 func (formatter listFormatter) Short() []byte {
 	var buf bytes.Buffer
 	for _, file := range formatter {
@@ -23,7 +23,7 @@ func (formatter listFormatter) Short() []byte {
 	return buf.Bytes()
 }
 
-// detail, one per line.
+// Detailed returns a string that lists the collection of files with extra detail, one per line.
 func (formatter listFormatter) Detailed() []byte {
 	var buf bytes.Buffer
 	for _, file := range formatter {
