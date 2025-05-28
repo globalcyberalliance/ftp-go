@@ -16,6 +16,7 @@ import (
 	"github.com/globalcyberalliance/ftp-go/driver/file"
 	ftpCli "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var _ ftp.Notifier = &mockNotifier{}
@@ -73,6 +74,12 @@ func (m *mockNotifier) BeforeDownloadFile(ctx *ftp.Context, dstPath string) {
 	m.lock.Unlock()
 }
 
+func (m *mockNotifier) AfterCommand(ctx *ftp.Context, command string, supported bool) {
+	m.lock.Lock()
+	m.actions = append(m.actions, "AfterCommand")
+	m.lock.Unlock()
+}
+
 func (m *mockNotifier) AfterUserLogin(ctx *ftp.Context, userName, password string, passMatched bool, err error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterUserLogin")
@@ -126,11 +133,11 @@ func assetMockNotifier(t *testing.T, mock *mockNotifier, lastActions []string) {
 
 func TestNotification(t *testing.T) {
 	err := os.MkdirAll("./testdata", os.ModePerm)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	perm := ftp.NewSimplePerm("test", "test")
 	driver, err := file.NewDriver("./testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	opt := &ftp.Options{
 		Name:   "test ftpd",
@@ -155,42 +162,42 @@ func TestNotification(t *testing.T) {
 			if err != nil && len(timeout.C) == 0 { // Retry errors
 				continue
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.NoError(t, f.Login("admin", "admin"))
+			require.NoError(t, f.Login("admin", "admin"))
 			assetMockNotifier(t, mock, []string{"BeforeLoginUser", "AfterUserLogin"})
 
 			assert.Error(t, f.Login("admin", "1111"))
 			assetMockNotifier(t, mock, []string{"BeforeLoginUser", "AfterUserLogin"})
 
 			content := `test`
-			assert.NoError(t, f.Stor("server_test.go", strings.NewReader(content)))
+			require.NoError(t, f.Stor("server_test.go", strings.NewReader(content)))
 			assetMockNotifier(t, mock, []string{"BeforePutFile", "AfterFilePut"})
 
 			r, err := f.RetrFrom("/server_test.go", 2)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			buf, err := ioutil.ReadAll(r)
 			r.Close()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.EqualValues(t, "st", string(buf))
 			assetMockNotifier(t, mock, []string{"BeforeDownloadFile", "AfterFileDownloaded"})
 
-			assert.NoError(t, f.Rename("/server_test.go", "/test.go"))
+			require.NoError(t, f.Rename("/server_test.go", "/test.go"))
 
-			assert.NoError(t, f.MakeDir("/src"))
+			require.NoError(t, f.MakeDir("/src"))
 			assetMockNotifier(t, mock, []string{"BeforeCreateDir", "AfterDirCreated"})
 
-			assert.NoError(t, f.Delete("/test.go"))
+			require.NoError(t, f.Delete("/test.go"))
 			assetMockNotifier(t, mock, []string{"BeforeDeleteFile", "AfterFileDeleted"})
 
-			assert.NoError(t, f.ChangeDir("/src"))
+			require.NoError(t, f.ChangeDir("/src"))
 			assetMockNotifier(t, mock, []string{"BeforeChangeCurDir", "AfterCurDirChanged"})
 
-			assert.NoError(t, f.RemoveDir("/src"))
+			require.NoError(t, f.RemoveDir("/src"))
 			assetMockNotifier(t, mock, []string{"BeforeDeleteDir", "AfterDirDeleted"})
 
-			assert.NoError(t, f.Quit())
+			require.NoError(t, f.Quit())
 
 			break
 		}

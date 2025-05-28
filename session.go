@@ -28,7 +28,7 @@ const (
 )
 
 type (
-	// Context represents a context the driver may want to know
+	// Context represents a context the driver may want to know.
 	Context struct {
 		Sess  *Session
 		Data  map[string]interface{} // share data between middlewares
@@ -36,7 +36,7 @@ type (
 		Param string                 // request param on this request
 	}
 
-	// Session represents a session between ftp client and the server
+	// Session represents a session between ftp client and the server.
 	Session struct {
 		dataConn      DataSocket
 		Conn          net.Conn
@@ -58,42 +58,42 @@ type (
 	}
 )
 
-// LocalAddr returns the local ftp server's address
+// LocalAddr returns the local ftp server's address.
 func (sess *Session) LocalAddr() net.Addr {
 	return sess.Conn.LocalAddr()
 }
 
-// RemoteAddr returns the remote ftp client's address
+// RemoteAddr returns the remote ftp client's address.
 func (sess *Session) RemoteAddr() net.Addr {
 	return sess.Conn.RemoteAddr()
 }
 
-// LoginUser returns the login user name if login
+// LoginUser returns the login user name if login.
 func (sess *Session) LoginUser() string {
 	return sess.user
 }
 
-// IsLogin returns if user has login
+// IsLogin returns if user has login.
 func (sess *Session) IsLogin() bool {
 	return len(sess.user) > 0
 }
 
-// PublicIP returns the public ip of the server
+// PublicIP returns the public ip of the server.
 func (sess *Session) PublicIP() string {
 	return sess.server.PublicIP
 }
 
-// Options returns the server options
+// Options returns the server options.
 func (sess *Session) Options() *Options {
 	return sess.server.Options
 }
 
-// Server returns the server of session
+// Server returns the server of session.
 func (sess *Session) Server() *Server {
 	return sess.server
 }
 
-// DataConn returns the data connection
+// DataConn returns the data connection.
 func (sess *Session) DataConn() DataSocket {
 	return sess.dataConn
 }
@@ -208,7 +208,7 @@ func (sess *Session) Close() {
 func (sess *Session) upgradeToTLS() error {
 	sess.log("Upgrading connection to TLS")
 
-	tlsConn := tls.Server(sess.Conn, sess.server.tlsConfig)
+	tlsConn := tls.Server(sess.Conn, sess.server.TLSConfig)
 	if err := tlsConn.Handshake(); err != nil {
 		return err
 	}
@@ -323,7 +323,7 @@ func (sess *Session) buildPath(filename string) (fullPath string) {
 	}
 	fullPath = strings.Replace(fullPath, "//", "/", -1)
 	fullPath = strings.Replace(fullPath, string(filepath.Separator), "/", -1)
-	return
+	return fullPath
 }
 
 // sendOutofbandData will send a string to the client via the currently open

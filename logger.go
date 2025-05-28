@@ -9,7 +9,7 @@ import (
 	"log"
 )
 
-// Logger represents an interface to record all ftp information and command
+// Logger represents an interface to record all ftp information and command.
 type Logger interface {
 	Print(sessionID string, message interface{})
 	Printf(sessionID string, format string, v ...interface{})
@@ -17,20 +17,20 @@ type Logger interface {
 	PrintResponse(sessionID string, code int, message string)
 }
 
-// StdLogger use an instance of this to log in a standard format
+// StdLogger use an instance of this to log in a standard format.
 type StdLogger struct{}
 
-// Print implements Logger
+// Print implements Logger.
 func (logger *StdLogger) Print(sessionID string, message interface{}) {
 	log.Printf("%s  %s", sessionID, message)
 }
 
-// Printf implements Logger
+// Printf implements Logger.
 func (logger *StdLogger) Printf(sessionID string, format string, v ...interface{}) {
 	logger.Print(sessionID, fmt.Sprintf(format, v...))
 }
 
-// PrintCommand implements Logger
+// PrintCommand implements Logger.
 func (logger *StdLogger) PrintCommand(sessionID string, command string, params string) {
 	if command == "PASS" {
 		log.Printf("%s > PASS ****", sessionID)
@@ -39,22 +39,22 @@ func (logger *StdLogger) PrintCommand(sessionID string, command string, params s
 	}
 }
 
-// PrintResponse implements Logger
+// PrintResponse implements Logger.
 func (logger *StdLogger) PrintResponse(sessionID string, code int, message string) {
 	log.Printf("%s < %d %s", sessionID, code, message)
 }
 
-// DiscardLogger represents a silent logger, produces no output
+// DiscardLogger represents a silent logger, produces no output.
 type DiscardLogger struct{}
 
-// Print implements Logger
+// Print implements Logger.
 func (logger *DiscardLogger) Print(sessionID string, message interface{}) {}
 
-// Printf implements Logger
+// Printf implements Logger.
 func (logger *DiscardLogger) Printf(sessionID string, format string, v ...interface{}) {}
 
-// PrintCommand implements Logger
+// PrintCommand implements Logger.
 func (logger *DiscardLogger) PrintCommand(sessionID string, command string, params string) {}
 
-// PrintResponse implements Logger
+// PrintResponse implements Logger.
 func (logger *DiscardLogger) PrintResponse(sessionID string, code int, message string) {}

@@ -11,14 +11,14 @@ type reader struct {
 	l *Limiter
 }
 
-// Read Read
+// Read Read.
 func (r *reader) Read(buf []byte) (int, error) {
 	n, err := r.r.Read(buf)
 	r.l.Wait(n)
 	return n, err
 }
 
-// Reader returns a reader with limiter
+// Reader returns a reader with limiter.
 func Reader(r io.Reader, l *Limiter) io.Reader {
 	return &reader{
 		r: r,

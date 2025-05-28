@@ -4,7 +4,7 @@
 
 package ftp
 
-// Notifier represents a notification operator interface
+// Notifier represents a notification operator interface.
 type Notifier interface {
 	BeforeCommand(ctx *Context, command string)
 	BeforeLoginUser(ctx *Context, userName string)
@@ -124,71 +124,71 @@ func (notifiers notifierList) AfterDirDeleted(ctx *Context, dstPath string, err 
 	}
 }
 
-// NullNotifier implements Notifier
+// NullNotifier implements Notifier.
 type NullNotifier struct{}
 
 var _ Notifier = &NullNotifier{}
 
-// BeforeCommand implements Notifier
+// BeforeCommand implements Notifier.
 func (NullNotifier) BeforeCommand(ctx *Context, command string) {
 }
 
-// BeforeLoginUser implements Notifier
+// BeforeLoginUser implements Notifier.
 func (NullNotifier) BeforeLoginUser(ctx *Context, userName string) {
 }
 
-// BeforePutFile implements Notifier
+// BeforePutFile implements Notifier.
 func (NullNotifier) BeforePutFile(ctx *Context, dstPath string) {
 }
 
-// BeforeDeleteFile implements Notifier
+// BeforeDeleteFile implements Notifier.
 func (NullNotifier) BeforeDeleteFile(ctx *Context, dstPath string) {
 }
 
-// BeforeChangeCurDir implements Notifier
+// BeforeChangeCurDir implements Notifier.
 func (NullNotifier) BeforeChangeCurDir(ctx *Context, oldCurDir, newCurDir string) {
 }
 
-// BeforeCreateDir implements Notifier
+// BeforeCreateDir implements Notifier.
 func (NullNotifier) BeforeCreateDir(ctx *Context, dstPath string) {
 }
 
-// BeforeDeleteDir implements Notifier
+// BeforeDeleteDir implements Notifier.
 func (NullNotifier) BeforeDeleteDir(ctx *Context, dstPath string) {
 }
 
-// BeforeDownloadFile implements Notifier
+// BeforeDownloadFile implements Notifier.
 func (NullNotifier) BeforeDownloadFile(ctx *Context, dstPath string) {
 }
 
-// AfterCommand implements Notifier
+// AfterCommand implements Notifier.
 func (NullNotifier) AfterCommand(ctx *Context, command string, supported bool) {
 }
 
-// AfterUserLogin implements Notifier
+// AfterUserLogin implements Notifier.
 func (NullNotifier) AfterUserLogin(ctx *Context, userName, password string, passMatched bool, err error) {
 }
 
-// AfterFilePut implements Notifier
+// AfterFilePut implements Notifier.
 func (NullNotifier) AfterFilePut(ctx *Context, dstPath string, size int64, err error) {
 }
 
-// AfterFileDeleted implements Notifier
+// AfterFileDeleted implements Notifier.
 func (NullNotifier) AfterFileDeleted(ctx *Context, dstPath string, err error) {
 }
 
-// AfterFileDownloaded implements Notifier
+// AfterFileDownloaded implements Notifier.
 func (NullNotifier) AfterFileDownloaded(ctx *Context, dstPath string, size int64, err error) {
 }
 
-// AfterCurDirChanged implements Notifier
+// AfterCurDirChanged implements Notifier.
 func (NullNotifier) AfterCurDirChanged(ctx *Context, oldCurDir, newCurDir string, err error) {
 }
 
-// AfterDirCreated implements Notifier
+// AfterDirCreated implements Notifier.
 func (NullNotifier) AfterDirCreated(ctx *Context, dstPath string, err error) {
 }
 
-// AfterDirDeleted implements Notifier
+// AfterDirDeleted implements Notifier.
 func (NullNotifier) AfterDirDeleted(ctx *Context, dstPath string, err error) {
 }

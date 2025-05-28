@@ -26,7 +26,7 @@ var (
 )
 
 type (
-	// Options contains parameters for server.NewServer()
+	// Options contains parameters for server.NewServer().
 	Options struct {
 		// The driver that will be used to handle files persistent
 		Driver Driver
@@ -60,12 +60,6 @@ type (
 		// Passive ports
 		PassivePorts string
 
-		// if tls used, cert file is required
-		CertFile string
-
-		// if tls used, key file is required
-		KeyFile string
-
 		WelcomeMessage string
 
 		// The port that the FTP should listen on. Optional, defaults to 3000. In
@@ -81,10 +75,10 @@ type (
 		// CommandsMu controls access to the Commands map
 		CommandsMu sync.RWMutex
 
-		// use tls, default is false
-		TLS bool
+		// TLSConfig if supplied, will enable TLS on the server
+		TLSConfig *tls.Config
 
-		// If ture TLS is used in RFC4217 mode
+		// If true, TLS is used in RFC4217 mode
 		ExplicitFTPS bool
 
 		// If true, client must upgrade to TLS before sending any other command
@@ -100,8 +94,7 @@ type (
 		listener net.Listener
 		ctx      context.Context
 		*Options
-		tlsConfig *tls.Config
-		cancel    context.CancelFunc
+		cancel context.CancelFunc
 		// rate limiter per connection
 		rateLimiter  *ratelimit.Limiter
 		ConnCallback func(ctx context.Context, conn net.Conn) net.Conn // optional callback for wrapping net.Conn before handling
@@ -169,9 +162,7 @@ func optsWithDefaults(opts *Options) *Options {
 	}
 
 	if opts.DisablePassive {
-		if _, ok := newOpts.Commands["PASV"]; ok {
-			delete(newOpts.Commands, "PASV")
-		}
+		delete(newOpts.Commands, "PASV")
 	}
 
 	if opts.Timeout.Seconds() <= 0 {
@@ -182,9 +173,7 @@ func optsWithDefaults(opts *Options) *Options {
 
 	newOpts.DisablePassive = opts.DisablePassive
 	newOpts.Perm = opts.Perm
-	newOpts.TLS = opts.TLS
-	newOpts.KeyFile = opts.KeyFile
-	newOpts.CertFile = opts.CertFile
+	newOpts.TLSConfig = opts.TLSConfig
 	newOpts.ExplicitFTPS = opts.ExplicitFTPS
 	newOpts.PublicIP = opts.PublicIP
 	newOpts.PassivePorts = opts.PassivePorts
@@ -227,7 +216,7 @@ func NewServer(opts *Options) (*Server, error) {
 		}
 	}
 
-	if opts.TLS {
+	if opts.TLSConfig != nil {
 		featCmds += " AUTH TLS\n PBSZ\n PROT\n"
 	}
 
@@ -237,7 +226,7 @@ func NewServer(opts *Options) (*Server, error) {
 	return s, nil
 }
 
-// RegisterNotifier registers a notifier
+// RegisterNotifier registers a notifier.
 func (server *Server) RegisterNotifier(notifier Notifier) {
 	server.notifiers = append(server.notifiers, notifier)
 }
@@ -286,16 +275,11 @@ func (server *Server) ListenAndServe() error {
 	var listener net.Listener
 	var err error
 
-	if server.Options.TLS {
-		server.tlsConfig, err = simpleTLSConfig(server.CertFile, server.KeyFile)
-		if err != nil {
-			return err
-		}
-
+	if server.Options.TLSConfig != nil {
 		if server.Options.ExplicitFTPS {
 			listener, err = net.Listen("tcp", server.listenTo)
 		} else {
-			listener, err = tls.Listen("tcp", server.listenTo, server.tlsConfig)
+			listener, err = tls.Listen("tcp", server.listenTo, server.Options.TLSConfig)
 		}
 	} else {
 		listener, err = net.Listen("tcp", server.listenTo)
@@ -348,7 +332,7 @@ func (server *Server) Serve(l net.Listener) error {
 	}
 }
 
-// Shutdown will gracefully stop a server. Already connected clients will retain their connections
+// Shutdown will gracefully stop a server. Already connected clients will retain their connections.
 func (server *Server) Shutdown() error {
 	if server.cancel != nil {
 		server.cancel()

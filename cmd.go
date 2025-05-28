@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-// Command represents a Command interface to a ftp command
+// Command represents a Command interface to a ftp command.
 type Command interface {
 	IsExtend() bool
 	RequireParam() bool
@@ -75,7 +75,7 @@ var defaultCommands = map[string]Command{
 	"XRMD": commandXRmd{},
 }
 
-// DefaultCommands returns the default commands
+// DefaultCommands returns the default commands.
 func DefaultCommands() map[string]Command {
 	return defaultCommands
 }
@@ -283,8 +283,7 @@ func (cmd commandCwd) Execute(sess *Session, param string) {
 	}
 }
 
-// commandDele responds to the DELE FTP command. It allows the client to delete
-// a file
+// a file.
 type commandDele struct{}
 
 func (cmd commandDele) IsExtend() bool {
@@ -682,8 +681,7 @@ func (cmd commandMdtm) Execute(sess *Session, param string) {
 	}
 }
 
-// commandMkd responds to the MKD FTP command. It allows the client to create
-// a new directory
+// a new directory.
 type commandMkd struct{}
 
 func (cmd commandMkd) IsExtend() bool {
@@ -766,8 +764,7 @@ func (cmd commandNoop) Execute(sess *Session, param string) {
 	sess.writeMessage(200, "OK")
 }
 
-// commandPass respond to the PASS FTP command by asking the driver if the
-// supplied username and password are valid
+// supplied username and password are valid.
 type commandPass struct{}
 
 func (cmd commandPass) IsExtend() bool {
@@ -855,10 +852,7 @@ func (cmd commandPasv) Execute(sess *Session, param string) {
 	sess.writeMessage(227, msg)
 }
 
-// commandPort responds to the PORT FTP command.
-//
-// The client has opened a listening socket for sending out of band data and
-// is requesting that we connect to it
+// is requesting that we connect to it.
 type commandPort struct{}
 
 func (cmd commandPort) IsExtend() bool {
@@ -932,9 +926,7 @@ func (cmd commandQuit) Execute(sess *Session, param string) {
 	sess.Close()
 }
 
-// commandRetr responds to the RETR FTP command. It allows the client to
-// download a file.
-// REST can be followed by APPE, STOR, or RETR
+// REST can be followed by APPE, STOR, or RETR.
 type commandRetr struct{}
 
 func (cmd commandRetr) IsExtend() bool {
@@ -1182,7 +1174,7 @@ func (cmd commandAuth) RequireAuth() bool {
 }
 
 func (cmd commandAuth) Execute(sess *Session, param string) {
-	if param == "TLS" && sess.server.tlsConfig != nil {
+	if param == "TLS" && sess.server.TLSConfig != nil {
 		sess.writeMessage(234, "AUTH command OK")
 		err := sess.upgradeToTLS()
 		if err != nil {
@@ -1593,7 +1585,7 @@ func (cmd commandType) Execute(sess *Session, param string) {
 	}
 }
 
-// commandUser responds to the USER FTP command by asking for the password
+// commandUser responds to the USER FTP command by asking for the password.
 type commandUser struct{}
 
 func (cmd commandUser) IsExtend() bool {

@@ -11,13 +11,13 @@ type writer struct {
 	l *Limiter
 }
 
-// Write Write
+// Write Write.
 func (w *writer) Write(buf []byte) (int, error) {
 	w.l.Wait(len(buf))
 	return w.w.Write(buf)
 }
 
-// Writer returns a writer with limiter
+// Writer returns a writer with limiter.
 func Writer(w io.Writer, l *Limiter) io.Writer {
 	return &writer{
 		w: w,

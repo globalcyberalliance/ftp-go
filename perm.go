@@ -6,7 +6,7 @@ package ftp
 
 import "os"
 
-// Perm represents a perm interface
+// Perm represents a perm interface.
 type Perm interface {
 	GetOwner(string) (string, error)
 	GetGroup(string) (string, error)
@@ -17,12 +17,12 @@ type Perm interface {
 	ChMode(string, os.FileMode) error
 }
 
-// SimplePerm implements Perm interface that all files are owned by special owner and group
+// SimplePerm implements Perm interface that all files are owned by special owner and group.
 type SimplePerm struct {
 	owner, group string
 }
 
-// NewSimplePerm creates a SimplePerm
+// NewSimplePerm creates a SimplePerm.
 func NewSimplePerm(owner, group string) *SimplePerm {
 	return &SimplePerm{
 		owner: owner,
@@ -30,32 +30,32 @@ func NewSimplePerm(owner, group string) *SimplePerm {
 	}
 }
 
-// GetOwner returns the file's owner
+// GetOwner returns the file's owner.
 func (s *SimplePerm) GetOwner(string) (string, error) {
 	return s.owner, nil
 }
 
-// GetGroup returns the group of the file
+// GetGroup returns the group of the file.
 func (s *SimplePerm) GetGroup(string) (string, error) {
 	return s.group, nil
 }
 
-// GetMode returns the file's mode
+// GetMode returns the file's mode.
 func (s *SimplePerm) GetMode(string) (os.FileMode, error) {
 	return os.ModePerm, nil
 }
 
-// ChOwner changed the file's owner
+// ChOwner changed the file's owner.
 func (s *SimplePerm) ChOwner(string, string) error {
 	return nil
 }
 
-// ChGroup changed the file's group
+// ChGroup changed the file's group.
 func (s *SimplePerm) ChGroup(string, string) error {
 	return nil
 }
 
-// ChMode changed the file's mode
+// ChMode changed the file's mode.
 func (s *SimplePerm) ChMode(string, os.FileMode) error {
 	return nil
 }

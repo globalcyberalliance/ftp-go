@@ -247,8 +247,8 @@ func (socket *passiveSocket) ListenAndServe() (err error) {
 	}
 
 	socket.port = port
-	if socket.sess.server.tlsConfig != nil {
-		listener = tls.NewListener(listener, socket.sess.server.tlsConfig)
+	if socket.sess.server.TLSConfig != nil {
+		listener = tls.NewListener(listener, socket.sess.server.TLSConfig)
 	}
 
 	socket.lock.Lock()

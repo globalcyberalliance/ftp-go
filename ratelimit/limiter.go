@@ -8,15 +8,14 @@ import (
 	"time"
 )
 
-// Limiter represents a rate limiter
+// Limiter represents a rate limiter.
 type Limiter struct {
 	t     time.Time
 	rate  time.Duration
 	count int64
 }
 
-// New create a limiter for transfer speed, parameter rate means bytes per second
-// 0 means don't limit
+// 0 means don't limit.
 func New(rate int64) *Limiter {
 	return &Limiter{
 		rate:  time.Duration(rate),
@@ -25,7 +24,7 @@ func New(rate int64) *Limiter {
 	}
 }
 
-// Wait sleep when write count bytes
+// Wait sleep when write count bytes.
 func (l *Limiter) Wait(count int) {
 	if l.rate == 0 {
 		return

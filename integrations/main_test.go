@@ -9,11 +9,12 @@ import (
 
 	"github.com/globalcyberalliance/ftp-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func runServer(t *testing.T, opt *ftp.Options, notifiers []ftp.Notifier, execute func()) {
 	s, err := ftp.NewServer(opt)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for _, notifier := range notifiers {
 		s.RegisterNotifier(notifier)
 	}
@@ -25,5 +26,5 @@ func runServer(t *testing.T, opt *ftp.Options, notifiers []ftp.Notifier, execute
 
 	execute()
 
-	assert.NoError(t, s.Shutdown())
+	require.NoError(t, s.Shutdown())
 }
