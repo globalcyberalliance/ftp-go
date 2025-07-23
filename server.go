@@ -97,7 +97,8 @@ type (
 		cancel context.CancelFunc
 		// rate limiter per connection
 		rateLimiter  *ratelimit.Limiter
-		ConnCallback func(ctx context.Context, conn net.Conn) net.Conn // optional callback for wrapping net.Conn before handling
+		ConnCallback func(ctx context.Context, conn net.Conn) net.Conn        // optional callback for wrapping net.Conn before handling
+		ConnContext  func(ctx context.Context, conn net.Conn) context.Context // optional callback for wrapping context.Context before handling
 		listenTo     string
 		feats        string
 		notifiers    notifierList
@@ -319,6 +320,16 @@ func (server *Server) Serve(l net.Listener) error {
 
 		if server.ConnCallback != nil {
 			rawConn = server.ConnCallback(ctx, rawConn)
+			if rawConn == nil {
+				panic("ConnCallback returned nil")
+			}
+		}
+
+		if server.ConnContext != nil {
+			ctx = server.ConnContext(ctx, rawConn)
+			if ctx == nil {
+				panic("ConnContext returned nil")
+			}
 		}
 
 		conn := serverConn{
