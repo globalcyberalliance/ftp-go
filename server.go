@@ -157,7 +157,7 @@ func optsWithDefaults(opts *Options) *Options {
 	}
 
 	if opts.Commands == nil {
-		newOpts.Commands = defaultCommands
+		newOpts.Commands = DefaultCommands()
 	} else {
 		newOpts.Commands = opts.Commands
 	}
@@ -199,7 +199,7 @@ func optsWithDefaults(opts *Options) *Options {
 func NewServer(opts *Options) (*Server, error) {
 	opts = optsWithDefaults(opts)
 	if opts.Perm == nil {
-		return nil, errors.New("No perm implementation")
+		return nil, errors.New("no perm implementation")
 	}
 
 	s := &Server{
@@ -250,21 +250,6 @@ func (server *Server) newSession(id string, tcpConn net.Conn) *Session {
 		Conn:          tcpConn,
 		Data:          make(map[string]interface{}),
 	}
-}
-
-func simpleTLSConfig(certFile, keyFile string) (*tls.Config, error) {
-	config := &tls.Config{}
-	if config.NextProtos == nil {
-		config.NextProtos = []string{"ftp"}
-	}
-
-	var err error
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, err
-	}
-	return config, nil
 }
 
 // ListenAndServe asks a new Server to begin accepting client connections. It accepts no arguments - all configuration
