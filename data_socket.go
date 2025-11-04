@@ -7,6 +7,7 @@ package ftp
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -42,15 +43,15 @@ type (
 
 	activeSocket struct {
 		conn   *net.TCPConn
+		host   string
+		port   int
 		reader io.Reader
 		writer io.Writer
 		sess   *Session
-		host   string
-		port   int
 	}
 )
 
-func newActiveSocket(sess *Session, remote string, port int) (DataSocket, error) {
+func newActiveSocket(sess *Session, remote string, port int) (*activeSocket, error) {
 	connectTo := net.JoinHostPort(remote, strconv.Itoa(port))
 
 	sess.log("Opening active data connection to " + connectTo)
@@ -58,22 +59,23 @@ func newActiveSocket(sess *Session, remote string, port int) (DataSocket, error)
 	raddr, err := net.ResolveTCPAddr("tcp", connectTo)
 	if err != nil {
 		sess.log(err)
-		return nil, err
+		return nil, fmt.Errorf("resolve tcp: %w", err)
 	}
 
 	tcpConn, err := net.DialTCP("tcp", nil, raddr)
 	if err != nil {
 		sess.log(err)
-		return nil, err
+		return nil, fmt.Errorf("dial tcp: %w", err)
 	}
 
-	socket := new(activeSocket)
-	socket.sess = sess
-	socket.conn = tcpConn
-	socket.reader = ratelimit.Reader(tcpConn, sess.server.rateLimiter)
-	socket.writer = ratelimit.Writer(tcpConn, sess.server.rateLimiter)
-	socket.host = remote
-	socket.port = port
+	socket := &activeSocket{
+		conn:   tcpConn,
+		host:   remote,
+		port:   port,
+		reader: ratelimit.Reader(tcpConn, sess.server.rateLimiter),
+		writer: ratelimit.Writer(tcpConn, sess.server.rateLimiter),
+		sess:   sess,
+	}
 
 	return socket, nil
 }
@@ -86,20 +88,39 @@ func (socket *activeSocket) Port() int {
 	return socket.port
 }
 
-func (socket *activeSocket) Read(p []byte) (n int, err error) {
-	return socket.reader.Read(p)
+func (socket *activeSocket) Read(p []byte) (int, error) {
+	bRead, err := socket.reader.Read(p)
+	if err != nil {
+		return 0, fmt.Errorf("read: %w", err)
+	}
+
+	return bRead, nil
 }
 
 func (socket *activeSocket) ReadFrom(r io.Reader) (int64, error) {
-	return io.Copy(socket.writer, r)
+	bRead, err := io.Copy(socket.writer, r)
+	if err != nil {
+		return 0, fmt.Errorf("read: %w", err)
+	}
+
+	return bRead, nil
 }
 
-func (socket *activeSocket) Write(p []byte) (n int, err error) {
-	return socket.writer.Write(p)
+func (socket *activeSocket) Write(p []byte) (int, error) {
+	bWritten, err := socket.writer.Write(p)
+	if err != nil {
+		return 0, fmt.Errorf("write: %w", err)
+	}
+
+	return bWritten, nil
 }
 
 func (socket *activeSocket) Close() error {
-	return socket.conn.Close()
+	if err := socket.conn.Close(); err != nil {
+		return fmt.Errorf("close active socket: %w", err)
+	}
+
+	return nil
 }
 
 type passiveSocket struct {
@@ -120,8 +141,7 @@ type passiveSocket struct {
 // Originally from https://stackoverflow.com/a/52152912/164234
 func isErrorAddressAlreadyInUse(err error) bool {
 	errOpError := &net.OpError{}
-	ok := errors.As(err, &errOpError)
-	if !ok {
+	if !errors.As(err, &errOpError) {
 		return false
 	}
 
@@ -139,33 +159,36 @@ func isErrorAddressAlreadyInUse(err error) bool {
 		return true
 	}
 
-	const WSAEADDRINUSE = 10048
-	if runtime.GOOS == "windows" && errErrno == WSAEADDRINUSE {
+	const errAddrInUse = 10048
+	if runtime.GOOS == "windows" && errErrno == errAddrInUse {
 		return true
 	}
 
 	return false
 }
 
-func (sess *Session) newPassiveSocket() (DataSocket, error) {
-	socket := new(passiveSocket)
-	socket.ingress = make(chan []byte)
-	socket.egress = make(chan []byte)
-	socket.sess = sess
-	socket.host = sess.passiveListenIP()
+func (sess *Session) newPassiveSocket() (*passiveSocket, error) {
+	socket := &passiveSocket{
+		sess:    sess,
+		ingress: make(chan []byte),
+		egress:  make(chan []byte),
+		host:    sess.passiveListenIP(),
+	}
+	sess.dataConn = socket
 
 	const retries = 10
 	var err error
-	for i := 1; i <= retries; i++ {
+	for range retries {
 		socket.port = sess.PassivePort()
-		err = socket.ListenAndServe()
-		if err != nil && socket.port != 0 && isErrorAddressAlreadyInUse(err) {
+
+		if err = socket.ListenAndServe(); err != nil && socket.port != 0 && isErrorAddressAlreadyInUse(err) {
 			// Choose a different port on error already in use.
 			continue
 		}
+
 		break
 	}
-	sess.dataConn = socket
+
 	return socket, err
 }
 
@@ -177,57 +200,70 @@ func (socket *passiveSocket) Port() int {
 	return socket.port
 }
 
-func (socket *passiveSocket) Read(p []byte) (n int, err error) {
+func (socket *passiveSocket) Read(p []byte) (int, error) {
 	socket.lock.Lock()
 	defer socket.lock.Unlock()
+
 	if socket.err != nil {
 		return 0, socket.err
 	}
+
 	return socket.reader.Read(p)
 }
 
 func (socket *passiveSocket) ReadFrom(r io.Reader) (int64, error) {
 	socket.lock.Lock()
 	defer socket.lock.Unlock()
+
 	if socket.err != nil {
 		return 0, socket.err
 	}
 
-	// For normal TCPConn, this will use sendfile syscall; if not, it will just downgrade to normal read/write
-	// procedure.
+	// io.Copy optimizes for TCPConn by using the sendfile syscall, falling back to standard read/write otherwise.
 	return io.Copy(socket.writer, r)
 }
 
-func (socket *passiveSocket) Write(p []byte) (n int, err error) {
+func (socket *passiveSocket) Write(p []byte) (int, error) {
 	socket.lock.Lock()
 	defer socket.lock.Unlock()
+
 	if socket.err != nil {
 		return 0, socket.err
 	}
-	return socket.writer.Write(p)
+
+	bWritten, err := socket.writer.Write(p)
+	if err != nil {
+		return 0, fmt.Errorf("write: %w", err)
+	}
+
+	return bWritten, nil
 }
 
 func (socket *passiveSocket) Close() error {
 	socket.lock.Lock()
 	defer socket.lock.Unlock()
+
 	if socket.conn != nil {
-		return socket.conn.Close()
+		if err := socket.conn.Close(); err != nil {
+			return fmt.Errorf("close socket: %w", err)
+		}
 	}
+
 	return nil
 }
 
-func (socket *passiveSocket) ListenAndServe() (err error) {
+func (socket *passiveSocket) ListenAndServe() error {
 	laddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort("", strconv.Itoa(socket.port)))
 	if err != nil {
 		socket.sess.log(err)
-		return err
+		return fmt.Errorf("resolve tcp address: %w", err)
 	}
 
 	var tcplistener *net.TCPListener
 	tcplistener, err = net.ListenTCP("tcp", laddr)
 	if err != nil {
 		socket.sess.log(err)
-		return err
+		return fmt.Errorf("listen tcp: %w", err)
 	}
 
 	// The timeout, for a remote client to establish connection with a PASV style data connection.
@@ -235,7 +271,7 @@ func (socket *passiveSocket) ListenAndServe() (err error) {
 	err = tcplistener.SetDeadline(time.Now().Add(acceptTimeout))
 	if err != nil {
 		socket.sess.log(err)
-		return err
+		return fmt.Errorf("set deadline: %w", err)
 	}
 
 	var listener net.Listener = tcplistener
@@ -244,7 +280,7 @@ func (socket *passiveSocket) ListenAndServe() (err error) {
 	port, err := strconv.Atoi(parts[len(parts)-1])
 	if err != nil {
 		socket.sess.log(err)
-		return err
+		return fmt.Errorf("parse port: %w", err)
 	}
 
 	socket.port = port
@@ -257,9 +293,9 @@ func (socket *passiveSocket) ListenAndServe() (err error) {
 	go func() {
 		defer socket.lock.Unlock()
 
-		conn, err := listener.Accept()
+		conn, lErr := listener.Accept()
 		if err != nil {
-			socket.err = err
+			socket.err = lErr
 			return
 		}
 

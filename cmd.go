@@ -27,98 +27,94 @@ type Command interface {
 // DefaultCommands returns the default commands.
 func DefaultCommands() map[string]Command {
 	return map[string]Command{
-		"ADAT": commandAdat{},
-		"ALLO": commandAllo{},
-		"APPE": commandAppe{},
-		"AUTH": commandAuth{},
-		"CDUP": commandCdup{},
-		"CWD":  commandCwd{},
-		"CCC":  commandCcc{},
-		"CONF": commandConf{},
+		"ADAT": commandADAT{},
+		"ALLO": commandALLO{},
+		"APPE": commandAPPE{},
+		"AUTH": commandAUTH{},
+		"CDUP": commandCDUP{},
+		"CWD":  commandCWD{},
+		"CCC":  commandCCC{},
+		"CONF": commandCONF{},
 		"CLNT": commandCLNT{},
-		"DELE": commandDele{},
-		"ENC":  commandEnc{},
-		"EPRT": commandEprt{},
-		"EPSV": commandEpsv{},
-		"FEAT": commandFeat{},
-		"LIST": commandList{},
-		"LPRT": commandLprt{},
-		"NLST": commandNlst{},
-		"MDTM": commandMdtm{},
-		"MIC":  commandMic{},
+		"DELE": commandDELE{},
+		"ENC":  commandENC{},
+		"EPRT": commandEPRT{},
+		"EPSV": commandEPSV{},
+		"FEAT": commandFEAT{},
+		"LIST": commandLIST{},
+		"LPRT": commandLPRT{},
+		"NLST": commandNLST{},
+		"MDTM": commandMDTM{},
+		"MIC":  commandMIC{},
 		"MLSD": commandMLSD{},
-		"MKD":  commandMkd{},
-		"MODE": commandMode{},
-		"NOOP": commandNoop{},
-		"OPTS": commandOpts{},
-		"PASS": commandPass{},
-		"PASV": commandPasv{},
-		"PBSZ": commandPbsz{},
-		"PORT": commandPort{},
-		"PROT": commandProt{},
-		"PWD":  commandPwd{},
-		"QUIT": commandQuit{},
-		"RETR": commandRetr{},
-		"REST": commandRest{},
-		"RNFR": commandRnfr{},
-		"RNTO": commandRnto{},
-		"RMD":  commandRmd{},
-		"SIZE": commandSize{},
-		"STAT": commandStat{},
-		"STOR": commandStor{},
-		"STRU": commandStru{},
-		"SYST": commandSyst{},
-		"TYPE": commandType{},
-		"USER": commandUser{},
-		"XCUP": commandCdup{},
-		"XCWD": commandCwd{},
-		"XMKD": commandMkd{},
-		"XPWD": commandPwd{},
+		"MKD":  commandMKD{},
+		"MODE": commandMODE{},
+		"NOOP": commandNOOP{},
+		"OPTS": commandOPTS{},
+		"PASS": commandPASS{},
+		"PASV": commandPASV{},
+		"PBSZ": commandPBSZ{},
+		"PORT": commandPORT{},
+		"PROT": commandPROT{},
+		"PWD":  commandPWD{},
+		"QUIT": commandQUIT{},
+		"RETR": commandRETR{},
+		"REST": commandREST{},
+		"RNFR": commandRNFR{},
+		"RNTO": commandRNTO{},
+		"RMD":  commandRMD{},
+		"SIZE": commandSIZE{},
+		"STAT": commandSTAT{},
+		"STOR": commandSTOR{},
+		"STRU": commandSTRU{},
+		"SYST": commandSYST{},
+		"TYPE": commandTYPE{},
+		"USER": commandUSER{},
+		"XCUP": commandCDUP{},
+		"XCWD": commandCWD{},
+		"XMKD": commandMKD{},
+		"XPWD": commandPWD{},
 		"XRMD": commandXRmd{},
 	}
 }
 
-// commandAllo responds to the ALLO FTP command.
-//
-// This is essentially a ping from the client so we just respond with an
-// basic OK message.
-type commandAllo struct{}
+// commandALLO represents the ALLO FTP command, which is obsolete and not implemented in this server.
+type commandALLO struct{}
 
-func (cmd commandAllo) IsExtend() bool {
+func (cmd commandALLO) IsExtend() bool {
 	return false
 }
 
-func (cmd commandAllo) RequireParam() bool {
+func (cmd commandALLO) RequireParam() bool {
 	return false
 }
 
-func (cmd commandAllo) RequireAuth() bool {
+func (cmd commandALLO) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandAllo) Execute(sess *Session, param string) {
-	sess.writeMessage(202, "Obsolete")
+func (cmd commandALLO) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeCommandNotImplemented, "Obsolete")
 }
 
-// commandAppe responds to the APPE FTP command. It allows the user to upload a
-// new file but always append if file exists otherwise create one.
-type commandAppe struct{}
+// commandAPPE represents the APPE FTP command for appending data to an existing file or creating a new one.
+type commandAPPE struct{}
 
-func (cmd commandAppe) IsExtend() bool {
+func (cmd commandAPPE) IsExtend() bool {
 	return false
 }
 
-func (cmd commandAppe) RequireParam() bool {
+func (cmd commandAPPE) RequireParam() bool {
 	return true
 }
 
-func (cmd commandAppe) RequireAuth() bool {
+func (cmd commandAPPE) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandAppe) Execute(sess *Session, param string) {
+func (cmd commandAPPE) Execute(sess *Session, param string) {
 	targetPath := sess.buildPath(param)
-	sess.writeMessage(150, "Data transfer starting")
+	sess.writeMessage(CodeFileStatusOK, "Data transfer starting")
 
 	if sess.preCommand != "REST" {
 		sess.lastFilePos = -1
@@ -129,19 +125,20 @@ func (cmd commandAppe) Execute(sess *Session, param string) {
 
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "APPE",
+		CMD:   "APPE",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 	sess.server.notifiers.BeforePutFile(&ctx, targetPath)
 	size, err := sess.server.Driver.PutFile(&ctx, targetPath, sess.dataConn, sess.lastFilePos)
 	sess.server.notifiers.AfterFilePut(&ctx, targetPath, size, err)
-	if err == nil {
-		msg := fmt.Sprintf("OK, received %d bytes", size)
-		sess.writeMessage(226, msg)
-	} else {
-		sess.writeMessage(450, fmt.Sprint("error during transfer: ", err))
+	if err != nil {
+		sess.writeMessage(CodeFileActionNotTaken, fmt.Sprint("error during transfer: ", err))
+		return
 	}
+
+	msg := fmt.Sprintf("OK, received %d bytes", size)
+	sess.writeMessage(CodeClosingDataConnection, msg)
 }
 
 type commandCLNT struct{}
@@ -160,245 +157,257 @@ func (cmd commandCLNT) RequireAuth() bool {
 
 func (cmd commandCLNT) Execute(sess *Session, param string) {
 	sess.clientSoft = param
-	sess.writeMessage(200, "OK")
+	sess.writeMessage(CodeCommandOK, "OK")
 }
 
-type commandOpts struct{}
+type commandOPTS struct{}
 
-func (cmd commandOpts) IsExtend() bool {
+func (cmd commandOPTS) IsExtend() bool {
 	return false
 }
 
-func (cmd commandOpts) RequireParam() bool {
+func (cmd commandOPTS) RequireParam() bool {
 	return false
 }
 
-func (cmd commandOpts) RequireAuth() bool {
+func (cmd commandOPTS) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandOpts) Execute(sess *Session, param string) {
+func (cmd commandOPTS) Execute(sess *Session, param string) {
+	const expectedParts = 2
+
 	parts := strings.Fields(param)
-	if len(parts) != 2 {
-		sess.writeMessage(550, "Unknow params")
+	if len(parts) != expectedParts {
+		sess.writeMessage(CodeFileUnavailable, "Unknow params")
 		return
 	}
+
 	if strings.ToUpper(parts[0]) != "UTF8" {
-		sess.writeMessage(550, "Unknow params")
+		sess.writeMessage(CodeFileUnavailable, "Unknow params")
 		return
 	}
 
 	if strings.ToUpper(parts[1]) == "ON" {
-		sess.writeMessage(200, "UTF8 mode enabled")
-	} else {
-		sess.writeMessage(550, "Unsupported non-utf8 mode")
+		sess.writeMessage(CodeCommandOK, "UTF8 mode enabled")
+		return
 	}
+
+	sess.writeMessage(CodeFileUnavailable, "Unsupported non-utf8 mode")
 }
 
-type commandFeat struct{}
+type commandFEAT struct{}
 
-func (cmd commandFeat) IsExtend() bool {
+func (cmd commandFEAT) IsExtend() bool {
 	return false
 }
 
-func (cmd commandFeat) RequireParam() bool {
+func (cmd commandFEAT) RequireParam() bool {
 	return false
 }
 
-func (cmd commandFeat) RequireAuth() bool {
+func (cmd commandFEAT) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandFeat) Execute(sess *Session, param string) {
-	sess.writeMessageMultiline(211, sess.server.feats)
+func (cmd commandFEAT) Execute(sess *Session, _ string) {
+	sess.writeMessageMultiline(CodeSystemStatus, sess.server.feats)
 }
 
-// cmdCdup responds to the CDUP FTP command.
+// commandCDUP responds to the CDUP FTP command.
 //
-// Allows the client change their current directory to the parent.
-type commandCdup struct{}
+// Allows the client to change their current directory to the parent.
+type commandCDUP struct{}
 
-func (cmd commandCdup) IsExtend() bool {
+func (cmd commandCDUP) IsExtend() bool {
 	return false
 }
 
-func (cmd commandCdup) RequireParam() bool {
+func (cmd commandCDUP) RequireParam() bool {
 	return false
 }
 
-func (cmd commandCdup) RequireAuth() bool {
+func (cmd commandCDUP) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandCdup) Execute(sess *Session, param string) {
-	otherCmd := &commandCwd{}
+func (cmd commandCDUP) Execute(sess *Session, _ string) {
+	otherCmd := &commandCWD{}
 	otherCmd.Execute(sess, "..")
 }
 
-// commandCwd responds to the CWD FTP command. It allows the client to change the
+// commandCWD responds to the CWD FTP command. It allows the client to change the
 // current working directory.
-type commandCwd struct{}
+type commandCWD struct{}
 
-func (cmd commandCwd) IsExtend() bool {
+func (cmd commandCWD) IsExtend() bool {
 	return false
 }
 
-func (cmd commandCwd) RequireParam() bool {
+func (cmd commandCWD) RequireParam() bool {
 	return true
 }
 
-func (cmd commandCwd) RequireAuth() bool {
+func (cmd commandCWD) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandCwd) Execute(sess *Session, param string) {
+func (cmd commandCWD) Execute(sess *Session, param string) {
 	buildPath := sess.buildPath(param)
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "CWD",
+		CMD:   "CWD",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 	info, err := sess.server.Driver.Stat(&ctx, buildPath)
 	if err != nil {
 		sess.logf("%v", err)
-		sess.writeMessage(550, fmt.Sprint("Directory change to ", buildPath, " failed."))
+		sess.writeMessage(CodeFileUnavailable, fmt.Sprint("Directory change to ", buildPath, " failed."))
 		return
 	}
 	if !info.IsDir() {
-		sess.writeMessage(550, fmt.Sprint("Directory change to ", buildPath, " is a file"))
+		sess.writeMessage(CodeFileUnavailable, fmt.Sprint("Directory change to ", buildPath, " is a file"))
 		return
 	}
 
 	sess.server.notifiers.BeforeChangeCurDir(&ctx, sess.curDir, buildPath)
 	err = sess.changeCurDir(buildPath)
 	sess.server.notifiers.AfterCurDirChanged(&ctx, sess.curDir, buildPath, err)
-	if err == nil {
-		sess.writeMessage(250, "Directory changed to "+buildPath)
-	} else {
+	if err != nil {
 		sess.logf("%v", err)
-		sess.writeMessage(550, fmt.Sprint("Directory change to ", buildPath, " failed."))
+		sess.writeMessage(CodeFileUnavailable, fmt.Sprint("Directory change to ", buildPath, " failed."))
+		return
 	}
+
+	sess.writeMessage(CodeFileActionOK, "Directory changed to "+buildPath)
 }
 
-// commandDele responds to the DELE FTP command. It allows the client to delete a file.
-type commandDele struct{}
+// commandDELE responds to the DELE FTP command. It allows the client to delete a file.
+type commandDELE struct{}
 
-func (cmd commandDele) IsExtend() bool {
+func (cmd commandDELE) IsExtend() bool {
 	return false
 }
 
-func (cmd commandDele) RequireParam() bool {
+func (cmd commandDELE) RequireParam() bool {
 	return true
 }
 
-func (cmd commandDele) RequireAuth() bool {
+func (cmd commandDELE) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandDele) Execute(sess *Session, param string) {
+func (cmd commandDELE) Execute(sess *Session, param string) {
 	buildPath := sess.buildPath(param)
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "DELE",
+		CMD:   "DELE",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 	sess.server.notifiers.BeforeDeleteFile(&ctx, buildPath)
 	err := sess.server.Driver.DeleteFile(&ctx, buildPath)
 	sess.server.notifiers.AfterFileDeleted(&ctx, buildPath, err)
 	if err == nil {
-		sess.writeMessage(250, "File deleted")
+		sess.writeMessage(CodeFileActionOK, "File deleted")
 	} else {
 		sess.logf("%v", err)
-		sess.writeMessage(550, "File delete failed. ")
+		sess.writeMessage(CodeFileUnavailable, "File delete failed. ")
 	}
 }
 
-// commandEprt responds to the EPRT FTP command. It allows the client to
+// commandEPRT responds to the EPRT FTP command. It allows the client to
 // request an active data socket with more options than the original PORT
 // command. It mainly adds ipv6 support.
-type commandEprt struct{}
+type commandEPRT struct{}
 
-func (cmd commandEprt) IsExtend() bool {
+func (cmd commandEPRT) IsExtend() bool {
 	return true
 }
 
-func (cmd commandEprt) RequireParam() bool {
+func (cmd commandEPRT) RequireParam() bool {
 	return true
 }
 
-func (cmd commandEprt) RequireAuth() bool {
+func (cmd commandEPRT) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandEprt) Execute(sess *Session, param string) {
-	delim := string(param[0:1])
+func (cmd commandEPRT) Execute(sess *Session, param string) {
+	delim := param[0:1]
 	parts := strings.Split(param, delim)
+
 	addressFamily, err := strconv.Atoi(parts[1])
 	if err != nil {
-		sess.writeMessage(522, "Network protocol not supported, use (1,2)")
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use (1,2)")
 		return
 	}
 	if addressFamily != 1 && addressFamily != 2 {
-		sess.writeMessage(522, "Network protocol not supported, use (1,2)")
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use (1,2)")
 		return
 	}
 
 	host := parts[2]
 	port, err := strconv.Atoi(parts[3])
 	if err != nil {
-		sess.writeMessage(522, "Network protocol not supported, use (1,2)")
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use (1,2)")
 		return
 	}
+
 	socket, err := newActiveSocket(sess, host, port)
 	if err != nil {
-		sess.writeMessage(425, "Data connection failed")
+		sess.writeMessage(CodeCannotOpenDataConnection, "Data connection failed")
 		return
 	}
+
 	sess.dataConn = socket
-	sess.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
+	sess.writeMessage(CodeCommandOK, "Connection established ("+strconv.Itoa(port)+")")
 }
 
-// commandLprt responds to the LPRT FTP command. It allows the client to
+// commandLPRT responds to the LPRT FTP command. It allows the client to
 // request an active data socket with more options than the original PORT
 // command.  FTP Operation Over Big Address Records.
-type commandLprt struct{}
+type commandLPRT struct{}
 
-func (cmd commandLprt) IsExtend() bool {
+func (cmd commandLPRT) IsExtend() bool {
 	return true
 }
 
-func (cmd commandLprt) RequireParam() bool {
+func (cmd commandLPRT) RequireParam() bool {
 	return true
 }
 
-func (cmd commandLprt) RequireAuth() bool {
+func (cmd commandLPRT) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandLprt) Execute(sess *Session, param string) {
-	// No tests for this code yet
+func (cmd commandLPRT) Execute(sess *Session, param string) {
+	// TODO: no tests for this code yet.
 
 	parts := strings.Split(param, ",")
 
 	addressFamily, err := strconv.Atoi(parts[0])
 	if err != nil {
-		sess.writeMessage(522, "Network protocol not supported, use 4")
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use 4")
 		return
 	}
-	if addressFamily != 4 {
-		sess.writeMessage(522, "Network protocol not supported, use 4")
+
+	const addressFamilyIPv4 = 4
+
+	if addressFamily != addressFamilyIPv4 {
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use 4")
 		return
 	}
 
 	addressLength, err := strconv.Atoi(parts[1])
 	if err != nil {
-		sess.writeMessage(522, "Network protocol not supported, use 4")
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use 4")
 		return
 	}
-	if addressLength != 4 {
-		sess.writeMessage(522, "Network IP length not supported, use 4")
+
+	if addressLength != addressFamilyIPv4 {
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network IP length not supported, use 4")
 		return
 	}
 
@@ -406,14 +415,14 @@ func (cmd commandLprt) Execute(sess *Session, param string) {
 
 	portLength, err := strconv.Atoi(parts[2+addressLength])
 	if err != nil {
-		sess.writeMessage(522, "Network protocol not supported, use 4")
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use 4")
 		return
 	}
 	portAddress := parts[3+addressLength : 3+addressLength+portLength]
 
 	port, err := parsePortFromBytes(portAddress)
 	if err != nil {
-		sess.writeMessage(522, "Network protocol not supported, use 4")
+		sess.writeMessage(CodeNetworkProtocolNotSupported, "Network protocol not supported, use 4")
 		return
 	}
 
@@ -424,12 +433,12 @@ func (cmd commandLprt) Execute(sess *Session, param string) {
 
 	socket, err := newActiveSocket(sess, host, port)
 	if err != nil {
-		sess.writeMessage(425, "Data connection failed")
+		sess.writeMessage(CodeCannotOpenDataConnection, "Data connection failed")
 		return
 	}
 
 	sess.dataConn = socket
-	sess.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
+	sess.writeMessage(CodeCommandOK, "Connection established ("+strconv.Itoa(port)+")")
 }
 
 // parsePortFromBytes converts a slice of port address strings to a port number.
@@ -452,65 +461,68 @@ func parsePortFromBytes(portAddress []string) (int, error) {
 	return int(binary.BigEndian.Uint16(portBytes)), nil
 }
 
-// commandEpsv responds to the EPSV FTP command. It allows the client to request a passive data socket with more options
+// commandEPSV responds to the EPSV FTP command. It allows the client to request a passive data socket with more options
 // than the original PASV command. It mainly adds IPv6 support, although we don't support that yet.
-type commandEpsv struct{}
+type commandEPSV struct{}
 
-func (cmd commandEpsv) IsExtend() bool {
+func (cmd commandEPSV) IsExtend() bool {
 	return true
 }
 
-func (cmd commandEpsv) RequireParam() bool {
+func (cmd commandEPSV) RequireParam() bool {
 	return false
 }
 
-func (cmd commandEpsv) RequireAuth() bool {
+func (cmd commandEPSV) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandEpsv) Execute(sess *Session, param string) {
+func (cmd commandEPSV) Execute(sess *Session, _ string) {
 	socket, err := sess.newPassiveSocket()
 	if err != nil {
 		sess.log(err)
-		sess.writeMessage(425, "Data connection failed")
+		sess.writeMessage(CodeCannotOpenDataConnection, "Data connection failed")
 		return
 	}
 
 	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", socket.Port())
-	sess.writeMessage(229, msg)
+	sess.writeMessage(CodeEnteringExtendedPassiveMode, msg)
 }
 
-// commandList responds to the LIST FTP command. It allows the client to retrieve a detailed listing of a directory.
-type commandList struct{}
+// commandLIST responds to the LIST FTP command. It allows the client to retrieve a detailed listing of a directory.
+type commandLIST struct{}
 
-func (cmd commandList) IsExtend() bool {
+func (cmd commandLIST) IsExtend() bool {
 	return false
 }
 
-func (cmd commandList) RequireParam() bool {
+func (cmd commandLIST) RequireParam() bool {
 	return false
 }
 
-func (cmd commandList) RequireAuth() bool {
+func (cmd commandLIST) RequireAuth() bool {
 	return true
 }
 
-func convertFileInfo(sess *Session, f os.FileInfo, p string) (FileInfo, error) {
+func convertFileInfo(sess *Session, f os.FileInfo, p string) (*fileInfo, error) {
 	mode, err := sess.server.Perm.GetMode(p)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get mode: %w", err)
 	}
 	if f.IsDir() {
 		mode |= os.ModeDir
 	}
+
 	owner, err := sess.server.Perm.GetOwner(p)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get owner: %w", err)
 	}
+
 	group, err := sess.server.Perm.GetGroup(p)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get group: %w", err)
 	}
+
 	return &fileInfo{
 		FileInfo: f,
 		mode:     mode,
@@ -522,13 +534,13 @@ func convertFileInfo(sess *Session, f os.FileInfo, p string) (FileInfo, error) {
 func list(sess *Session, cmd, p, param string) ([]FileInfo, error) {
 	ctx := &Context{
 		Sess:  sess,
-		Cmd:   cmd,
+		CMD:   cmd,
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 	info, err := sess.server.Driver.Stat(ctx, p)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("stat: %w", err)
 	}
 
 	if info == nil {
@@ -538,111 +550,116 @@ func list(sess *Session, cmd, p, param string) ([]FileInfo, error) {
 
 	var files []FileInfo
 	if info.IsDir() {
-		err = sess.server.Driver.ListDir(ctx, p, func(f os.FileInfo) error {
-			info, err := convertFileInfo(sess, f, path.Join(p, f.Name()))
-			if err != nil {
-				return err
+		if err = sess.server.Driver.ListDir(ctx, p, func(f os.FileInfo) error {
+			info, cErr := convertFileInfo(sess, f, path.Join(p, f.Name()))
+			if cErr != nil {
+				return cErr
 			}
+
 			files = append(files, info)
+
 			return nil
-		})
-		if err != nil {
-			return nil, err
+		}); err != nil {
+			return nil, fmt.Errorf("list dir: %w", err)
 		}
 	} else {
-		newInfo, err := convertFileInfo(sess, info, p)
-		if err != nil {
-			return nil, err
+		newInfo, cErr := convertFileInfo(sess, info, p)
+		if cErr != nil {
+			return nil, cErr
 		}
+
 		files = append(files, newInfo)
 	}
+
 	return files, nil
 }
 
-func (cmd commandList) Execute(sess *Session, param string) {
+func (cmd commandLIST) Execute(sess *Session, param string) {
 	p := sess.buildPath(parseListParam(param))
 
 	files, err := list(sess, "LIST", p, param)
 	if err != nil {
-		sess.writeMessage(550, err.Error())
+		sess.writeMessage(CodeFileUnavailable, err.Error())
 		return
 	}
 
-	sess.writeMessage(150, "Opening ASCII mode data connection for file list")
+	sess.writeMessage(CodeFileStatusOK, "Opening ASCII mode data connection for file list")
 	sess.sendOutofbandData(listFormatter(files).Detailed())
 }
 
-func parseListParam(param string) (path string) {
+func parseListParam(param string) string {
 	if len(param) == 0 {
-		path = param
-	} else {
-		fields := strings.Fields(param)
-		i := 0
-		for _, field := range fields {
-			if !strings.HasPrefix(field, "-") {
-				break
-			}
-			i = strings.LastIndex(param, " "+field) + len(field) + 1
-		}
-		path = strings.TrimLeft(param[i:], " ") // Get all the path even with space inside
+		return param
 	}
-	return path
+
+	fields := strings.Fields(param)
+	i := 0
+	for _, field := range fields {
+		if !strings.HasPrefix(field, "-") {
+			break
+		}
+
+		i = strings.LastIndex(param, " "+field) + len(field) + 1
+	}
+
+	// Get the full path with whitespace retained.
+	return strings.TrimLeft(param[i:], " ")
 }
 
-// commandNlst responds to the NLST FTP command. It allows the client to retrieve a list of filenames in the current
+// commandNLST responds to the NLST FTP command. It allows the client to retrieve a list of filenames in the current
 // directory.
-type commandNlst struct{}
+type commandNLST struct{}
 
-func (cmd commandNlst) IsExtend() bool {
+func (cmd commandNLST) IsExtend() bool {
 	return false
 }
 
-func (cmd commandNlst) RequireParam() bool {
+func (cmd commandNLST) RequireParam() bool {
 	return false
 }
 
-func (cmd commandNlst) RequireAuth() bool {
+func (cmd commandNLST) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandNlst) Execute(sess *Session, param string) {
+func (cmd commandNLST) Execute(sess *Session, param string) {
 	ctx := &Context{
 		Sess:  sess,
-		Cmd:   "NLST",
+		CMD:   "NLST",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 
 	buildPath := sess.buildPath(parseListParam(param))
 	info, err := sess.server.Driver.Stat(ctx, buildPath)
 	if err != nil {
-		sess.writeMessage(550, err.Error())
+		sess.writeMessage(CodeFileUnavailable, err.Error())
 		return
 	}
 	if !info.IsDir() {
-		sess.writeMessage(550, param+" is not a directory")
+		sess.writeMessage(CodeFileUnavailable, param+" is not a directory")
 		return
 	}
 
 	var files []FileInfo
-	err = sess.server.Driver.ListDir(ctx, buildPath, func(f os.FileInfo) error {
-		mode, err := sess.server.Perm.GetMode(buildPath)
-		if err != nil {
-			return err
+	if err = sess.server.Driver.ListDir(ctx, buildPath, func(f os.FileInfo) error {
+		mode, modeErr := sess.server.Perm.GetMode(buildPath)
+		if modeErr != nil {
+			return fmt.Errorf("get mode: %w", modeErr)
 		}
 
 		if info.IsDir() {
 			mode |= os.ModeDir
 		}
 
-		owner, err := sess.server.Perm.GetOwner(buildPath)
-		if err != nil {
-			return err
+		owner, ownerErr := sess.server.Perm.GetOwner(buildPath)
+		if ownerErr != nil {
+			return fmt.Errorf("get owner: %w", ownerErr)
 		}
 
-		group, err := sess.server.Perm.GetGroup(buildPath)
-		if err != nil {
-			return err
+		group, groupErr := sess.server.Perm.GetGroup(buildPath)
+		if groupErr != nil {
+			return fmt.Errorf("get group: %w", groupErr)
 		}
 
 		files = append(files, &fileInfo{
@@ -653,76 +670,76 @@ func (cmd commandNlst) Execute(sess *Session, param string) {
 		})
 
 		return nil
-	})
-	if err != nil {
-		sess.writeMessage(550, err.Error())
+	}); err != nil {
+		sess.writeMessage(CodeFileUnavailable, err.Error())
 		return
 	}
 
-	sess.writeMessage(150, "Opening ASCII mode data connection for file list")
+	sess.writeMessage(CodeFileStatusOK, "Opening ASCII mode data connection for file list")
 	sess.sendOutofbandData(listFormatter(files).Short())
 }
 
-// commandMdtm responds to the MDTM FTP command. It allows the client to retrieve the last modified time of a file.
-type commandMdtm struct{}
+// commandMDTM responds to the MDTM FTP command. It allows the client to retrieve the last modified time of a file.
+type commandMDTM struct{}
 
-func (cmd commandMdtm) IsExtend() bool {
+func (cmd commandMDTM) IsExtend() bool {
 	return false
 }
 
-func (cmd commandMdtm) RequireParam() bool {
+func (cmd commandMDTM) RequireParam() bool {
 	return true
 }
 
-func (cmd commandMdtm) RequireAuth() bool {
+func (cmd commandMDTM) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandMdtm) Execute(sess *Session, param string) {
+func (cmd commandMDTM) Execute(sess *Session, param string) {
 	buildPath := sess.buildPath(param)
 	stat, err := sess.server.Driver.Stat(&Context{
 		Sess:  sess,
-		Cmd:   "MDTM",
+		CMD:   "MDTM",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}, buildPath)
-	if err == nil {
-		sess.writeMessage(213, stat.ModTime().Format("20060102150405"))
-	} else {
-		sess.writeMessage(450, "File not available")
+	if err != nil {
+		sess.writeMessage(CodeFileActionNotTaken, "File not available")
+		return
 	}
+
+	sess.writeMessage(CodeFileStatus, stat.ModTime().Format("20060102150405"))
 }
 
-// commandMkd responds to the MKD FTP command. It allows the client to create a new directory.
-type commandMkd struct{}
+// commandMKD responds to the MKD FTP command. It allows the client to create a new directory.
+type commandMKD struct{}
 
-func (cmd commandMkd) IsExtend() bool {
+func (cmd commandMKD) IsExtend() bool {
 	return false
 }
 
-func (cmd commandMkd) RequireParam() bool {
+func (cmd commandMKD) RequireParam() bool {
 	return true
 }
 
-func (cmd commandMkd) RequireAuth() bool {
+func (cmd commandMKD) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandMkd) Execute(sess *Session, param string) {
+func (cmd commandMKD) Execute(sess *Session, param string) {
 	buildPath := sess.buildPath(param)
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "MKD",
+		CMD:   "MKD",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 	sess.server.notifiers.BeforeCreateDir(&ctx, buildPath)
 	err := sess.server.Driver.MakeDir(&ctx, buildPath)
 	sess.server.notifiers.AfterDirCreated(&ctx, buildPath, err)
 	if err == nil {
-		sess.writeMessage(257, "Directory created")
+		sess.writeMessage(CodePathnameCreated, "Directory created")
 	} else {
-		sess.writeMessage(550, fmt.Sprint("Action not taken: ", err))
+		sess.writeMessage(CodeFileUnavailable, fmt.Sprint("Action not taken: ", err))
 	}
 }
 
@@ -730,25 +747,25 @@ func (cmd commandMkd) Execute(sess *Session, param string) {
 //
 // The original FTP spec had various options for hosts to negotiate how data would be sent over the data socket.
 // These days (S)tream mode is all that is used for the mode - data is just streamed down the data socket unchanged.
-type commandMode struct{}
+type commandMODE struct{}
 
-func (cmd commandMode) IsExtend() bool {
+func (cmd commandMODE) IsExtend() bool {
 	return false
 }
 
-func (cmd commandMode) RequireParam() bool {
+func (cmd commandMODE) RequireParam() bool {
 	return true
 }
 
-func (cmd commandMode) RequireAuth() bool {
+func (cmd commandMODE) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandMode) Execute(sess *Session, param string) {
+func (cmd commandMODE) Execute(sess *Session, param string) {
 	if strings.ToUpper(param) == "S" {
-		sess.writeMessage(200, "OK")
+		sess.writeMessage(CodeCommandOK, "OK")
 	} else {
-		sess.writeMessage(504, "MODE is an obsolete command")
+		sess.writeMessage(CodeCommandNotImplementedForParm, "MODE is an obsolete command")
 	}
 }
 
@@ -756,40 +773,40 @@ func (cmd commandMode) Execute(sess *Session, param string) {
 //
 // This is essentially a ping from the client so we just respond with an
 // basic 200 message.
-type commandNoop struct{}
+type commandNOOP struct{}
 
-func (cmd commandNoop) IsExtend() bool {
+func (cmd commandNOOP) IsExtend() bool {
 	return false
 }
 
-func (cmd commandNoop) RequireParam() bool {
+func (cmd commandNOOP) RequireParam() bool {
 	return false
 }
 
-func (cmd commandNoop) RequireAuth() bool {
+func (cmd commandNOOP) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandNoop) Execute(sess *Session, param string) {
-	sess.writeMessage(200, "OK")
+func (cmd commandNOOP) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeCommandOK, "OK")
 }
 
-// commandPass respond to the PASS FTP command by asking the driver if the supplied username and password are valid.
-type commandPass struct{}
+// commandPASS respond to the PASS FTP command by asking the driver if the supplied username and password are valid.
+type commandPASS struct{}
 
-func (cmd commandPass) IsExtend() bool {
+func (cmd commandPASS) IsExtend() bool {
 	return false
 }
 
-func (cmd commandPass) RequireParam() bool {
+func (cmd commandPASS) RequireParam() bool {
 	return true
 }
 
-func (cmd commandPass) RequireAuth() bool {
+func (cmd commandPASS) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandPass) Execute(sess *Session, param string) {
+func (cmd commandPASS) Execute(sess *Session, param string) {
 	auth := sess.server.Auth
 
 	// If the driver implements Auth, call that instead of the server version.
@@ -799,57 +816,57 @@ func (cmd commandPass) Execute(sess *Session, param string) {
 
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "PASS",
+		CMD:   "PASS",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 
 	ok, err := auth.CheckPasswd(&ctx, sess.reqUser, param)
 	sess.server.notifiers.AfterUserLogin(&ctx, sess.reqUser, param, ok, err)
 	if err != nil {
-		sess.writeMessage(550, "Checking password error")
+		sess.writeMessage(CodeFileUnavailable, "Checking password error")
 		return
 	}
 
 	if ok {
 		sess.user = sess.reqUser
 		sess.reqUser = ""
-		sess.writeMessage(230, "Password ok, continue")
+		sess.writeMessage(CodeUserLoggedIn, "Password ok, continue")
 	} else {
-		sess.writeMessage(530, "Incorrect password, not logged in")
+		sess.writeMessage(CodeNotLoggedIn, "Incorrect password, not logged in")
 	}
 }
 
-// commandPasv responds to the PASV FTP command.
+// commandPASV responds to the PASV FTP command.
 //
 // The client is requesting us to open a new TCP listing socket and wait for them
 // to connect to it.
-type commandPasv struct{}
+type commandPASV struct{}
 
-func (cmd commandPasv) IsExtend() bool {
+func (cmd commandPASV) IsExtend() bool {
 	return false
 }
 
-func (cmd commandPasv) RequireParam() bool {
+func (cmd commandPASV) RequireParam() bool {
 	return false
 }
 
-func (cmd commandPasv) RequireAuth() bool {
+func (cmd commandPASV) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandPasv) Execute(sess *Session, param string) {
+func (cmd commandPASV) Execute(sess *Session, _ string) {
 	listenIP := sess.passiveListenIP()
 
-	// TODO: IPv6 for this command is not implemented
+	// TODO: IPv6 for this command is not implemented.
 	if strings.HasPrefix(listenIP, "::") {
-		sess.writeMessage(550, "Action not taken")
+		sess.writeMessage(CodeFileUnavailable, "Action not taken")
 		return
 	}
 
 	socket, err := sess.newPassiveSocket()
 	if err != nil {
-		sess.writeMessage(425, "Data connection failed")
+		sess.writeMessage(CodeCannotOpenDataConnection, "Data connection failed")
 		return
 	}
 
@@ -857,104 +874,129 @@ func (cmd commandPasv) Execute(sess *Session, param string) {
 	p2 := socket.Port() - (p1 * 256)
 
 	quads := strings.Split(listenIP, ".")
-	target := fmt.Sprintf("(%s,%s,%s,%s,%d,%d)", quads[0], quads[1], quads[2], quads[3], p1, p2)
-	msg := "Entering Passive Mode " + target
-	sess.writeMessage(227, msg)
+	msg := fmt.Sprintf("Entering Passive Mode (%s,%s,%s,%s,%d,%d)", quads[0], quads[1], quads[2], quads[3], p1, p2)
+	sess.writeMessage(CodeEnteringPassiveMode, msg)
 }
 
-// commandPort responds to the PORT FTP command.
+// commandPORT responds to the PORT FTP command.
 //
 // The client has opened a listening socket for sending out of band data and is requesting that we connect to it.
-type commandPort struct{}
+type commandPORT struct{}
 
-func (cmd commandPort) IsExtend() bool {
+func (cmd commandPORT) IsExtend() bool {
 	return false
 }
 
-func (cmd commandPort) RequireParam() bool {
+func (cmd commandPORT) RequireParam() bool {
 	return true
 }
 
-func (cmd commandPort) RequireAuth() bool {
+func (cmd commandPORT) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandPort) Execute(sess *Session, param string) {
-	nums := strings.Split(param, ",")
-	portOne, _ := strconv.Atoi(nums[4])
-	portTwo, _ := strconv.Atoi(nums[5])
-	port := (portOne * 256) + portTwo
-	host := nums[0] + "." + nums[1] + "." + nums[2] + "." + nums[3]
+func (cmd commandPORT) Execute(sess *Session, param string) {
+	const (
+		byteShift     = 256 // Multiplier to convert high byte to port.
+		expectedParts = 6   // IP address (4 octets) + port (2 bytes).
+		ipOctetCount  = 4   // Number of octets in IP address.
+		portHighByte  = 4   // High byte of port number.
+		portLowByte   = 5   // Low byte of port number.
+	)
+
+	parts := strings.Split(param, ",")
+	if len(parts) != expectedParts {
+		sess.writeMessage(CodeSyntaxError, "Invalid PORT command format")
+		return
+	}
+
+	portHigh, err := strconv.Atoi(parts[portHighByte])
+	if err != nil {
+		sess.writeMessage(CodeSyntaxError, "Invalid port high byte")
+		return
+	}
+
+	portLow, err := strconv.Atoi(parts[portLowByte])
+	if err != nil {
+		sess.writeMessage(CodeSyntaxError, "Invalid port low byte")
+		return
+	}
+
+	port := (portHigh * byteShift) + portLow
+	host := strings.Join(parts[:ipOctetCount], ".")
 
 	socket, err := newActiveSocket(sess, host, port)
 	if err != nil {
-		sess.writeMessage(425, "Data connection failed")
+		sess.writeMessage(CodeCannotOpenDataConnection, "Data connection failed")
 		return
 	}
 
 	sess.dataConn = socket
-	sess.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
+	sess.writeMessage(CodeCommandOK, fmt.Sprintf("Connection established (%d)", port))
 }
 
-// commandPwd responds to the PWD FTP command.
+// commandPWD responds to the PWD FTP command.
 //
 // Tells the client what the current working directory is.
-type commandPwd struct{}
+type commandPWD struct{}
 
-func (cmd commandPwd) IsExtend() bool {
+func (cmd commandPWD) IsExtend() bool {
 	return false
 }
 
-func (cmd commandPwd) RequireParam() bool {
+func (cmd commandPWD) RequireParam() bool {
 	return false
 }
 
-func (cmd commandPwd) RequireAuth() bool {
+func (cmd commandPWD) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandPwd) Execute(sess *Session, param string) {
-	sess.writeMessage(257, "\""+sess.curDir+"\" is the current directory")
+func (cmd commandPWD) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodePathnameCreated, "\""+sess.curDir+"\" is the current directory")
 }
 
 // CommandQuit responds to the QUIT FTP command. The client has requested the
 // connection be closed.
-type commandQuit struct{}
+type commandQUIT struct{}
 
-func (cmd commandQuit) IsExtend() bool {
+func (cmd commandQUIT) IsExtend() bool {
 	return false
 }
 
-func (cmd commandQuit) RequireParam() bool {
+func (cmd commandQUIT) RequireParam() bool {
 	return false
 }
 
-func (cmd commandQuit) RequireAuth() bool {
+func (cmd commandQUIT) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandQuit) Execute(sess *Session, param string) {
-	sess.writeMessage(221, "Goodbye")
-	sess.Close()
+func (cmd commandQUIT) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeServiceClosingControlConn, "Goodbye")
+
+	if err := sess.Close(); err != nil {
+		sess.logf("Error closing control connection: %v", err)
+	}
 }
 
-// commandRetr responds to the RETR FTP command. It allows the client to download a file.
+// commandRETR responds to the RETR FTP command. It allows the client to download a file.
 // REST can be followed by APPE, STOR, or RETR.
-type commandRetr struct{}
+type commandRETR struct{}
 
-func (cmd commandRetr) IsExtend() bool {
+func (cmd commandRETR) IsExtend() bool {
 	return false
 }
 
-func (cmd commandRetr) RequireParam() bool {
+func (cmd commandRETR) RequireParam() bool {
 	return true
 }
 
-func (cmd commandRetr) RequireAuth() bool {
+func (cmd commandRETR) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandRetr) Execute(sess *Session, param string) {
+func (cmd commandRETR) Execute(sess *Session, param string) {
 	buildPath := sess.buildPath(param)
 	if sess.preCommand != "REST" {
 		sess.lastFilePos = -1
@@ -966,9 +1008,9 @@ func (cmd commandRetr) Execute(sess *Session, param string) {
 
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "RETR",
+		CMD:   "RETR",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 
 	sess.server.notifiers.BeforeDownloadFile(&ctx, buildPath)
@@ -978,129 +1020,130 @@ func (cmd commandRetr) Execute(sess *Session, param string) {
 	}
 
 	size, data, err := sess.server.Driver.GetFile(&ctx, buildPath, readPos)
-	if err == nil {
-		defer data.Close()
-		sess.writeMessage(150, fmt.Sprintf("Data transfer starting %d bytes", size))
-		err = sess.sendOutofBandDataWriter(data)
+	if err != nil {
 		sess.server.notifiers.AfterFileDownloaded(&ctx, buildPath, size, err)
-		if err != nil {
-			sess.writeMessage(551, "Error reading file")
-		}
-	} else {
-		sess.server.notifiers.AfterFileDownloaded(&ctx, buildPath, size, err)
-		sess.writeMessage(551, "File not available")
+		sess.writeMessage(CodeActionAbortedPageUnknown, "File not available")
+		return
+	}
+	defer data.Close()
+
+	sess.writeMessage(CodeFileStatusOK, fmt.Sprintf("Data transfer starting %d bytes", size))
+	err = sess.sendOutOfBandDataWriter(data)
+	sess.server.notifiers.AfterFileDownloaded(&ctx, buildPath, size, err)
+	if err != nil {
+		sess.writeMessage(CodeActionAbortedPageUnknown, "Error reading file")
 	}
 }
 
-type commandRest struct{}
+type commandREST struct{}
 
-func (cmd commandRest) IsExtend() bool {
+func (cmd commandREST) IsExtend() bool {
 	return false
 }
 
-func (cmd commandRest) RequireParam() bool {
+func (cmd commandREST) RequireParam() bool {
 	return true
 }
 
-func (cmd commandRest) RequireAuth() bool {
+func (cmd commandREST) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandRest) Execute(sess *Session, param string) {
+func (cmd commandREST) Execute(sess *Session, param string) {
 	var err error
 	sess.lastFilePos, err = strconv.ParseInt(param, 10, 64)
 	if err != nil {
-		sess.writeMessage(551, "File not available")
+		sess.writeMessage(CodeActionAbortedPageUnknown, "File not available")
 		return
 	}
 
-	sess.writeMessage(350, fmt.Sprint("Start transfer from ", sess.lastFilePos))
+	sess.writeMessage(CodeRequestedFileActionPending, fmt.Sprint("Start transfer from ", sess.lastFilePos))
 }
 
-// commandRnfr responds to the RNFR FTP command. It's the first of two commands
+// commandRNFR responds to the RNFR FTP command. It's the first of two commands
 // required for a client to rename a file.
-type commandRnfr struct{}
+type commandRNFR struct{}
 
-func (cmd commandRnfr) IsExtend() bool {
+func (cmd commandRNFR) IsExtend() bool {
 	return false
 }
 
-func (cmd commandRnfr) RequireParam() bool {
+func (cmd commandRNFR) RequireParam() bool {
 	return true
 }
 
-func (cmd commandRnfr) RequireAuth() bool {
+func (cmd commandRNFR) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandRnfr) Execute(sess *Session, param string) {
+func (cmd commandRNFR) Execute(sess *Session, param string) {
 	sess.renameFrom = ""
 	p := sess.buildPath(param)
 	if _, err := sess.server.Driver.Stat(&Context{
 		Sess:  sess,
-		Cmd:   "RNFR",
+		CMD:   "RNFR",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}, p); err != nil {
-		sess.writeMessage(550, fmt.Sprint("Action not taken: ", err))
+		sess.writeMessage(CodeFileUnavailable, fmt.Sprint("Action not taken: ", err))
 		return
 	}
 
 	sess.renameFrom = p
-	sess.writeMessage(350, "Requested file action pending further information.")
+	sess.writeMessage(CodeRequestedFileActionPending, "Requested file action pending further information.")
 }
 
 // cmdRnto responds to the RNTO FTP command. It's the second of two commands
 // required for a client to rename a file.
-type commandRnto struct{}
+type commandRNTO struct{}
 
-func (cmd commandRnto) IsExtend() bool {
+func (cmd commandRNTO) IsExtend() bool {
 	return false
 }
 
-func (cmd commandRnto) RequireParam() bool {
+func (cmd commandRNTO) RequireParam() bool {
 	return true
 }
 
-func (cmd commandRnto) RequireAuth() bool {
+func (cmd commandRNTO) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandRnto) Execute(sess *Session, param string) {
+func (cmd commandRNTO) Execute(sess *Session, param string) {
 	toPath := sess.buildPath(param)
 	err := sess.server.Driver.Rename(&Context{
 		Sess:  sess,
-		Cmd:   "RNTO",
+		CMD:   "RNTO",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}, sess.renameFrom, toPath)
 	defer func() {
 		sess.renameFrom = ""
 	}()
 
 	if err == nil {
-		sess.writeMessage(250, "File renamed")
+		sess.writeMessage(CodeFileActionOK, "File renamed")
 	} else {
-		sess.writeMessage(550, fmt.Sprint("Action not taken: ", err))
+		sess.writeMessage(CodeFileUnavailable, fmt.Sprint("Action not taken: ", err))
 	}
 }
 
 // cmdRmd responds to the RMD FTP command. It allows the client to delete a directory.
-type commandRmd struct{}
+type commandRMD struct{}
 
-func (cmd commandRmd) IsExtend() bool {
+func (cmd commandRMD) IsExtend() bool {
 	return false
 }
 
-func (cmd commandRmd) RequireParam() bool {
+func (cmd commandRMD) RequireParam() bool {
 	return true
 }
 
-func (cmd commandRmd) RequireAuth() bool {
+func (cmd commandRMD) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandRmd) Execute(sess *Session, param string) {
+func (cmd commandRMD) Execute(sess *Session, param string) {
 	executeRmd("RMD", sess, param)
 }
 
@@ -1124,132 +1167,128 @@ func (cmd commandXRmd) Execute(sess *Session, param string) {
 }
 
 func executeRmd(cmd string, sess *Session, param string) {
-	p := sess.buildPath(param)
-
-	ctx := Context{
-		Sess:  sess,
-		Cmd:   cmd,
-		Param: param,
-		Data:  make(map[string]interface{}),
-	}
-
+	ctx := newContext(sess, cmd, param, nil)
 	if param == "/" || param == "" {
-		sess.writeMessage(550, "Directory / cannot be deleted")
+		sess.writeMessage(CodeFileUnavailable, "Directory / cannot be deleted")
 		return
 	}
 
+	realPath := sess.buildPath(param)
 	needChangeCurDir := strings.HasPrefix(param, sess.curDir)
 
-	sess.server.notifiers.BeforeDeleteDir(&ctx, p)
-	err := sess.server.Driver.DeleteDir(&ctx, p)
+	sess.server.notifiers.BeforeDeleteDir(ctx, realPath)
+	err := sess.server.Driver.DeleteDir(ctx, realPath)
+	sess.server.notifiers.AfterDirDeleted(ctx, realPath, err)
 	if needChangeCurDir {
-		sess.curDir = path.Dir(param)
+		if changeDirErr := sess.changeCurDir(path.Dir(param)); changeDirErr != nil && err == nil {
+			err = fmt.Errorf("change directory: %w", changeDirErr)
+		}
+	}
+	if err != nil {
+		sess.writeMessage(CodeFileUnavailable, fmt.Sprintf("Directory delete failed: %v", err))
+		return
+
 	}
 
-	sess.server.notifiers.AfterDirDeleted(&ctx, p, err)
-	if err == nil {
-		sess.writeMessage(250, "Directory deleted")
-	} else {
-		sess.writeMessage(550, fmt.Sprint("Directory delete failed: ", err))
-	}
+	sess.writeMessage(CodeFileActionOK, "Directory deleted")
 }
 
-type commandAdat struct{}
+type commandADAT struct{}
 
-func (cmd commandAdat) IsExtend() bool {
+func (cmd commandADAT) IsExtend() bool {
 	return false
 }
 
-func (cmd commandAdat) RequireParam() bool {
+func (cmd commandADAT) RequireParam() bool {
 	return true
 }
 
-func (cmd commandAdat) RequireAuth() bool {
+func (cmd commandADAT) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandAdat) Execute(sess *Session, param string) {
-	sess.writeMessage(550, "Action not taken")
+func (cmd commandADAT) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeFileUnavailable, "Action not taken")
 }
 
-type commandAuth struct{}
+type commandAUTH struct{}
 
-func (cmd commandAuth) IsExtend() bool {
+func (cmd commandAUTH) IsExtend() bool {
 	return false
 }
 
-func (cmd commandAuth) RequireParam() bool {
+func (cmd commandAUTH) RequireParam() bool {
 	return true
 }
 
-func (cmd commandAuth) RequireAuth() bool {
+func (cmd commandAUTH) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandAuth) Execute(sess *Session, param string) {
+func (cmd commandAUTH) Execute(sess *Session, param string) {
 	if param == "TLS" && sess.server.TLSConfig != nil {
-		sess.writeMessage(234, "AUTH command OK")
-		err := sess.upgradeToTLS()
-		if err != nil {
+		sess.writeMessage(CodeSecurityMechanismAccepted, "AUTH command OK")
+
+		if err := sess.upgradeToTLS(); err != nil {
 			sess.logf("Error upgrading connection to TLS %v", err.Error())
 		}
 	} else {
-		sess.writeMessage(550, "Action not taken")
+		sess.writeMessage(CodeFileUnavailable, "Action not taken")
 	}
 }
 
-type commandCcc struct{}
+type commandCCC struct{}
 
-func (cmd commandCcc) IsExtend() bool {
+func (cmd commandCCC) IsExtend() bool {
 	return false
 }
 
-func (cmd commandCcc) RequireParam() bool {
+func (cmd commandCCC) RequireParam() bool {
 	return true
 }
 
-func (cmd commandCcc) RequireAuth() bool {
+func (cmd commandCCC) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandCcc) Execute(sess *Session, param string) {
-	sess.writeMessage(550, "Action not taken")
+func (cmd commandCCC) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeFileUnavailable, "Action not taken")
 }
 
-type commandEnc struct{}
+type commandENC struct{}
 
-func (cmd commandEnc) IsExtend() bool {
+func (cmd commandENC) IsExtend() bool {
 	return false
 }
 
-func (cmd commandEnc) RequireParam() bool {
+func (cmd commandENC) RequireParam() bool {
 	return true
 }
 
-func (cmd commandEnc) RequireAuth() bool {
+func (cmd commandENC) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandEnc) Execute(sess *Session, param string) {
-	sess.writeMessage(550, "Action not taken")
+func (cmd commandENC) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeFileUnavailable, "Action not taken")
 }
 
-type commandMic struct{}
+type commandMIC struct{}
 
-func (cmd commandMic) IsExtend() bool {
+func (cmd commandMIC) IsExtend() bool {
 	return false
 }
 
-func (cmd commandMic) RequireParam() bool {
+func (cmd commandMIC) RequireParam() bool {
 	return true
 }
 
-func (cmd commandMic) RequireAuth() bool {
+func (cmd commandMIC) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandMic) Execute(sess *Session, param string) {
-	sess.writeMessage(550, "Action not taken")
+func (cmd commandMIC) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeFileUnavailable, "Action not taken")
 }
 
 type commandMLSD struct{}
@@ -1298,144 +1337,153 @@ func (cmd commandMLSD) Execute(sess *Session, param string) {
 
 	files, err := list(sess, "MLSD", p, param)
 	if err != nil {
-		sess.writeMessage(550, err.Error())
+		sess.writeMessage(CodeFileUnavailable, err.Error())
 		return
 	}
 
-	sess.writeMessage(150, "Opening ASCII mode data connection for file list")
+	sess.writeMessage(CodeFileStatusOK, "Opening ASCII mode data connection for file list")
 	sess.sendOutofbandData(toMLSDFormat(files))
 }
 
-type commandPbsz struct{}
+type commandPBSZ struct{}
 
-func (cmd commandPbsz) IsExtend() bool {
+func (cmd commandPBSZ) IsExtend() bool {
 	return false
 }
 
-func (cmd commandPbsz) RequireParam() bool {
+func (cmd commandPBSZ) RequireParam() bool {
 	return true
 }
 
-func (cmd commandPbsz) RequireAuth() bool {
+func (cmd commandPBSZ) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandPbsz) Execute(sess *Session, param string) {
+func (cmd commandPBSZ) Execute(sess *Session, param string) {
 	if sess.tls && param == "0" {
-		sess.writeMessage(200, "OK")
+		sess.writeMessage(CodeCommandOK, "OK")
 	} else {
-		sess.writeMessage(550, "Action not taken")
+		sess.writeMessage(CodeFileUnavailable, "Action not taken")
 	}
 }
 
-type commandProt struct{}
+const (
+	ProtectionLevelClear   = "C" // ProtectionLevelClear represents clear (unencrypted) mode.
+	ProtectionLevelPrivate = "P" // ProtectionLevelPrivate represents private (encrypted) mode.
+)
 
-func (cmd commandProt) IsExtend() bool {
+type commandPROT struct{}
+
+func (cmd commandPROT) IsExtend() bool {
 	return false
 }
 
-func (cmd commandProt) RequireParam() bool {
+func (cmd commandPROT) RequireParam() bool {
 	return true
 }
 
-func (cmd commandProt) RequireAuth() bool {
+func (cmd commandPROT) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandProt) Execute(sess *Session, param string) {
-	if sess.tls && param == "P" {
-		sess.writeMessage(200, "OK")
-	} else if sess.tls {
-		sess.writeMessage(536, "Only P level is supported")
-	} else {
-		sess.writeMessage(550, "Action not taken")
+func (cmd commandPROT) Execute(sess *Session, param string) {
+	if sess.tls {
+		if param == ProtectionLevelPrivate {
+			sess.writeMessage(CodeCommandOK, "OK")
+			return
+		}
+
+		sess.writeMessage(CodeDataProtectionNotSupported, "Only P level is supported")
+		return
 	}
+
+	sess.writeMessage(CodeFileUnavailable, "Action not taken")
 }
 
-type commandConf struct{}
+type commandCONF struct{}
 
-func (cmd commandConf) IsExtend() bool {
+func (cmd commandCONF) IsExtend() bool {
 	return false
 }
 
-func (cmd commandConf) RequireParam() bool {
+func (cmd commandCONF) RequireParam() bool {
 	return true
 }
 
-func (cmd commandConf) RequireAuth() bool {
+func (cmd commandCONF) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandConf) Execute(sess *Session, param string) {
-	sess.writeMessage(550, "Action not taken")
+func (cmd commandCONF) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeFileUnavailable, "Action not taken")
 }
 
-// commandSize responds to the SIZE FTP command. It returns the size of the
+// commandSIZE responds to the SIZE FTP command. It returns the size of the
 // requested path in bytes.
-type commandSize struct{}
+type commandSIZE struct{}
 
-func (cmd commandSize) IsExtend() bool {
+func (cmd commandSIZE) IsExtend() bool {
 	return false
 }
 
-func (cmd commandSize) RequireParam() bool {
+func (cmd commandSIZE) RequireParam() bool {
 	return true
 }
 
-func (cmd commandSize) RequireAuth() bool {
+func (cmd commandSIZE) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandSize) Execute(sess *Session, param string) {
+func (cmd commandSIZE) Execute(sess *Session, param string) {
 	buildPath := sess.buildPath(param)
 	stat, err := sess.server.Driver.Stat(&Context{
 		Sess:  sess,
-		Cmd:   "SIZE",
+		CMD:   "SIZE",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}, buildPath)
 	if err != nil {
+		// TODO: shouldn't log without using upstream logger.
 		log.Printf("Size: error(%s)", err)
-		sess.writeMessage(450, fmt.Sprintf("path %s not found", param))
+		sess.writeMessage(CodeFileActionNotTaken, fmt.Sprintf("path %s not found", param))
 	} else {
-		sess.writeMessage(213, strconv.Itoa(int(stat.Size())))
+		sess.writeMessage(CodeFileStatus, strconv.Itoa(int(stat.Size())))
 	}
 }
 
-// commandStat responds to the STAT FTP command. It returns the stat of the
-// requested path.
-type commandStat struct{}
+// commandSTAT responds to the STAT FTP command. It returns the stat of the requested path.
+type commandSTAT struct{}
 
-func (cmd commandStat) IsExtend() bool {
+func (cmd commandSTAT) IsExtend() bool {
 	return false
 }
 
-func (cmd commandStat) RequireParam() bool {
+func (cmd commandSTAT) RequireParam() bool {
 	return false
 }
 
-func (cmd commandStat) RequireAuth() bool {
+func (cmd commandSTAT) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandStat) Execute(sess *Session, param string) {
+func (cmd commandSTAT) Execute(sess *Session, param string) {
 	// System stat.
 	if param == "" {
-		sess.writeMessage(211, fmt.Sprintf("%s FTP server status:\nVersion %s"+
+		sess.writeMessage(CodeSystemStatus, fmt.Sprintf("%s FTP server status:\nVersion %s"+
 			"Connected to %s (%s)\n"+
 			"Logged in %s\n"+
 			"TYPE: ASCII, FORM: Nonprint; STRUcture: File; transfer MODE: Stream\n"+
 			"No data connection", sess.PublicIP(), version, sess.PublicIP(),
 			version, sess.LoginUser()))
-		sess.writeMessage(211, "End of status")
+		sess.writeMessage(CodeSystemStatus, "End of status")
 		return
 	}
 
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "STAT",
+		CMD:   "STAT",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 
 	// File or directory stat.
@@ -1444,56 +1492,59 @@ func (cmd commandStat) Execute(sess *Session, param string) {
 	stat, err := sess.server.Driver.Stat(&ctx, buildPath)
 	if err != nil {
 		log.Printf("Size: error(%s)", err)
-		sess.writeMessage(450, fmt.Sprintf("path %s not found", buildPath))
+		sess.writeMessage(CodeFileActionNotTaken, fmt.Sprintf("path %s not found", buildPath))
 	} else {
 		var files []FileInfo
 
 		if stat.IsDir() {
 			err = sess.server.Driver.ListDir(&ctx, buildPath, func(f os.FileInfo) error {
-				info, err := convertFileInfo(sess, f, filepath.Join(buildPath, f.Name()))
-				if err != nil {
-					return err
+				info, cErr := convertFileInfo(sess, f, filepath.Join(buildPath, f.Name()))
+				if cErr != nil {
+					return cErr
 				}
+
 				files = append(files, info)
+
 				return nil
 			})
 			if err != nil {
-				sess.writeMessage(550, err.Error())
+				sess.writeMessage(CodeFileUnavailable, err.Error())
 				return
 			}
-			sess.writeMessage(213, "Opening ASCII mode data connection for file list")
+
+			sess.writeMessage(CodeFileStatus, "Opening ASCII mode data connection for file list")
 		} else {
-			info, err := convertFileInfo(sess, stat, buildPath)
-			if err != nil {
-				sess.writeMessage(550, err.Error())
+			info, cErr := convertFileInfo(sess, stat, buildPath)
+			if cErr != nil {
+				sess.writeMessage(CodeFileUnavailable, cErr.Error())
 				return
 			}
 
 			files = append(files, info)
-			sess.writeMessage(212, "Opening ASCII mode data connection for file list")
+			sess.writeMessage(CodeDirectoryStatus, "Opening ASCII mode data connection for file list")
 		}
 		sess.sendOutofbandData(listFormatter(files).Detailed())
 	}
 }
 
-// commandStor responds to the STOR FTP command. It allows the user to upload a new file.
-type commandStor struct{}
+// commandSTOR responds to the STOR FTP command. It allows the user to upload a new file.
+type commandSTOR struct{}
 
-func (cmd commandStor) IsExtend() bool {
+func (cmd commandSTOR) IsExtend() bool {
 	return false
 }
 
-func (cmd commandStor) RequireParam() bool {
+func (cmd commandSTOR) RequireParam() bool {
 	return true
 }
 
-func (cmd commandStor) RequireAuth() bool {
+func (cmd commandSTOR) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandStor) Execute(sess *Session, param string) {
+func (cmd commandSTOR) Execute(sess *Session, param string) {
 	targetPath := sess.buildPath(param)
-	sess.writeMessage(150, "Data transfer starting")
+	sess.writeMessage(CodeFileStatusOK, "Data transfer starting")
 
 	if sess.preCommand != "REST" {
 		sess.lastFilePos = -1
@@ -1505,121 +1556,127 @@ func (cmd commandStor) Execute(sess *Session, param string) {
 
 	ctx := Context{
 		Sess:  sess,
-		Cmd:   "STOR",
+		CMD:   "STOR",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}
 	sess.server.notifiers.BeforePutFile(&ctx, targetPath)
 	size, err := sess.server.Driver.PutFile(&ctx, targetPath, sess.dataConn, sess.lastFilePos)
 	sess.server.notifiers.AfterFilePut(&ctx, targetPath, size, err)
-	if err == nil {
-		msg := fmt.Sprintf("OK, received %d bytes", size)
-		sess.writeMessage(226, msg)
-	} else {
-		sess.writeMessage(450, fmt.Sprint("error during transfer: ", err))
+	if err != nil {
+		sess.writeMessage(CodeFileActionNotTaken, fmt.Sprint("error during transfer: ", err))
+		return
 	}
+
+	sess.writeMessage(CodeClosingDataConnection, fmt.Sprintf("OK, received %d bytes", size))
 }
 
-// commandStru responds to the STRU FTP command.
+// commandSTRU handles the STRU (structure) FTP command.
 //
-// Like the MODE and TYPE commands, stru[cture] dates back to a time when the FTP protocol was more aware of the content
-// of the files it was transferring, and would sometimes be expected to translate things like EOL markers on the fly.
+// Like the MODE and TYPE commands, STRU originates from an earlier era of FTP when the protocol was aware of file
+// structure and might transform data (e.g., end-of-line markers) during transfer.
 //
-// These days files are sent unmodified, and F(ile) mode is the only one we really need to support.
-type commandStru struct{}
+// Modern FTP servers transmit files as raw bytes, so only File (F) structure mode is relevant and supported.
+type commandSTRU struct{}
 
-func (cmd commandStru) IsExtend() bool {
+func (cmd commandSTRU) IsExtend() bool {
 	return false
 }
 
-func (cmd commandStru) RequireParam() bool {
+func (cmd commandSTRU) RequireParam() bool {
 	return true
 }
 
-func (cmd commandStru) RequireAuth() bool {
+func (cmd commandSTRU) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandStru) Execute(sess *Session, param string) {
+func (cmd commandSTRU) Execute(sess *Session, param string) {
 	if strings.ToUpper(param) == "F" {
-		sess.writeMessage(200, "OK")
+		sess.writeMessage(CodeCommandOK, "OK")
 	} else {
-		sess.writeMessage(504, "STRU is an obsolete command")
+		sess.writeMessage(CodeCommandNotImplementedForParm, "STRU is an obsolete command")
 	}
 }
 
-// commandSyst responds to the SYST FTP command by providing a canned response.
-type commandSyst struct{}
+// commandSYST responds to the SYST FTP command by providing a canned response.
+type commandSYST struct{}
 
-func (cmd commandSyst) IsExtend() bool {
+func (cmd commandSYST) IsExtend() bool {
 	return false
 }
 
-func (cmd commandSyst) RequireParam() bool {
+func (cmd commandSYST) RequireParam() bool {
 	return false
 }
 
-func (cmd commandSyst) RequireAuth() bool {
+func (cmd commandSYST) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandSyst) Execute(sess *Session, param string) {
-	sess.writeMessage(215, "UNIX Type: L8")
+func (cmd commandSYST) Execute(sess *Session, _ string) {
+	sess.writeMessage(CodeSystemType, "UNIX Type: L8")
 }
 
-// commandType responds to the TYPE FTP command.
+// commandTYPE handles the TYPE FTP command.
 //
-// Like the MODE and STRU commands, TYPE dates back to a time when the FTP protocol was more aware of the content of the files it was transferring, and  would sometimes be expected to translate things like EOL markers on the fly.
+// Historically, FTP supported different transfer modes (TYPE, MODE, and STRU) from a time when the protocol was aware
+// of file content and might translate things like end-of-line markers during transfer.
 //
-// Valid options were A(SCII), I(mage), E(BCDIC) or LN (for local type). Since we plan to just accept bytes from the
-// client unchanged, I think Image mode is adequate. The RFC requires we accept ASCII mode however, so accept it, but
-// ignore it.
-type commandType struct{}
+// Valid TYPE arguments include A(SCII), I(mage), E(BCDIC), and L(N) for local byte size. Since this server transfers
+// raw bytes without translation, Image mode is enough. However, the RFC requires support for ASCII mode as well, so
+// we accept it but treat it identically to Image mode.
+type commandTYPE struct{}
 
-func (cmd commandType) IsExtend() bool {
+func (cmd commandTYPE) IsExtend() bool {
 	return false
 }
 
-func (cmd commandType) RequireParam() bool {
+func (cmd commandTYPE) RequireParam() bool {
 	return false
 }
 
-func (cmd commandType) RequireAuth() bool {
+func (cmd commandTYPE) RequireAuth() bool {
 	return true
 }
 
-func (cmd commandType) Execute(sess *Session, param string) {
-	if strings.ToUpper(param) == "A" {
-		sess.writeMessage(200, "Type set to ASCII")
-	} else if strings.ToUpper(param) == "I" {
-		sess.writeMessage(200, "Type set to binary")
-	} else {
-		sess.writeMessage(500, "Invalid type")
+func (cmd commandTYPE) Execute(sess *Session, param string) {
+	param = strings.ToUpper(param)
+
+	switch param {
+	case "A":
+		sess.writeMessage(CodeCommandOK, "Type set to ASCII")
+		return
+	case "I":
+		sess.writeMessage(CodeCommandOK, "Type set to binary")
+		return
 	}
+
+	sess.writeMessage(CodeSyntaxError, "Invalid type")
 }
 
-// commandUser responds to the USER FTP command by asking for the password.
-type commandUser struct{}
+// commandUSER responds to the USER FTP command by asking for the password.
+type commandUSER struct{}
 
-func (cmd commandUser) IsExtend() bool {
+func (cmd commandUSER) IsExtend() bool {
 	return false
 }
 
-func (cmd commandUser) RequireParam() bool {
+func (cmd commandUSER) RequireParam() bool {
 	return true
 }
 
-func (cmd commandUser) RequireAuth() bool {
+func (cmd commandUSER) RequireAuth() bool {
 	return false
 }
 
-func (cmd commandUser) Execute(sess *Session, param string) {
+func (cmd commandUSER) Execute(sess *Session, param string) {
 	sess.reqUser = param
 	sess.server.notifiers.BeforeLoginUser(&Context{
 		Sess:  sess,
-		Cmd:   "USER",
+		CMD:   "USER",
 		Param: param,
-		Data:  make(map[string]interface{}),
+		Data:  make(map[string]any),
 	}, sess.reqUser)
-	sess.writeMessage(331, "User name ok, password required")
+	sess.writeMessage(CodeUserNameOKNeedPassword, "User name ok, password required")
 }

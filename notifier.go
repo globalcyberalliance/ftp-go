@@ -130,65 +130,50 @@ type NullNotifier struct{}
 var _ Notifier = &NullNotifier{}
 
 // BeforeCommand implements Notifier.
-func (NullNotifier) BeforeCommand(ctx *Context, command string) {
-}
+func (NullNotifier) BeforeCommand(_ *Context, _ string) {}
 
 // BeforeLoginUser implements Notifier.
-func (NullNotifier) BeforeLoginUser(ctx *Context, userName string) {
-}
+func (NullNotifier) BeforeLoginUser(_ *Context, _ string) {}
 
 // BeforePutFile implements Notifier.
-func (NullNotifier) BeforePutFile(ctx *Context, dstPath string) {
-}
+func (NullNotifier) BeforePutFile(_ *Context, _ string) {}
 
 // BeforeDeleteFile implements Notifier.
-func (NullNotifier) BeforeDeleteFile(ctx *Context, dstPath string) {
-}
+func (NullNotifier) BeforeDeleteFile(_ *Context, _ string) {}
 
 // BeforeChangeCurDir implements Notifier.
-func (NullNotifier) BeforeChangeCurDir(ctx *Context, oldCurDir, newCurDir string) {
-}
+func (NullNotifier) BeforeChangeCurDir(_ *Context, _ string, _ string) {}
 
 // BeforeCreateDir implements Notifier.
-func (NullNotifier) BeforeCreateDir(ctx *Context, dstPath string) {
-}
+func (NullNotifier) BeforeCreateDir(_ *Context, _ string) {}
 
 // BeforeDeleteDir implements Notifier.
-func (NullNotifier) BeforeDeleteDir(ctx *Context, dstPath string) {
-}
+func (NullNotifier) BeforeDeleteDir(_ *Context, _ string) {}
 
 // BeforeDownloadFile implements Notifier.
-func (NullNotifier) BeforeDownloadFile(ctx *Context, dstPath string) {
+func (NullNotifier) BeforeDownloadFile(_ *Context, _ string) {
 }
 
 // AfterCommand implements Notifier.
-func (NullNotifier) AfterCommand(ctx *Context, command string, supported bool) {
-}
+func (NullNotifier) AfterCommand(_ *Context, _ string, _ bool) {}
 
 // AfterUserLogin implements Notifier.
-func (NullNotifier) AfterUserLogin(ctx *Context, userName, password string, passMatched bool, err error) {
-}
+func (NullNotifier) AfterUserLogin(_ *Context, _ string, _ string, _ bool, _ error) {}
 
 // AfterFilePut implements Notifier.
-func (NullNotifier) AfterFilePut(ctx *Context, dstPath string, size int64, err error) {
-}
+func (NullNotifier) AfterFilePut(_ *Context, _ string, _ int64, _ error) {}
 
 // AfterFileDeleted implements Notifier.
-func (NullNotifier) AfterFileDeleted(ctx *Context, dstPath string, err error) {
-}
+func (NullNotifier) AfterFileDeleted(_ *Context, _ string, _ error) {}
 
 // AfterFileDownloaded implements Notifier.
-func (NullNotifier) AfterFileDownloaded(ctx *Context, dstPath string, size int64, err error) {
-}
+func (NullNotifier) AfterFileDownloaded(_ *Context, _ string, _ int64, _ error) {}
 
 // AfterCurDirChanged implements Notifier.
-func (NullNotifier) AfterCurDirChanged(ctx *Context, oldCurDir, newCurDir string, err error) {
-}
+func (NullNotifier) AfterCurDirChanged(_ *Context, _ string, _ string, _ error) {}
 
 // AfterDirCreated implements Notifier.
-func (NullNotifier) AfterDirCreated(ctx *Context, dstPath string, err error) {
-}
+func (NullNotifier) AfterDirCreated(_ *Context, _ string, _ error) {}
 
 // AfterDirDeleted implements Notifier.
-func (NullNotifier) AfterDirDeleted(ctx *Context, dstPath string, err error) {
-}
+func (NullNotifier) AfterDirDeleted(_ *Context, _ string, _ error) {}

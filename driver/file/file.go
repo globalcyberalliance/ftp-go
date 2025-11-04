@@ -25,7 +25,7 @@ type Driver struct {
 func NewDriver(rootPath string) (ftp.Driver, error) {
 	absolutePath, err := filepath.Abs(rootPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get absolute path: %w", err)
 	}
 
 	return &Driver{absolutePath}, nil
@@ -41,16 +41,22 @@ func (driver *Driver) Stat(_ *ftp.Context, path string) (os.FileInfo, error) {
 	basepath := driver.realPath(path)
 	rPath, err := filepath.Abs(basepath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get absolute path: %w", err)
 	}
 
-	return os.Lstat(rPath)
+	fInfo, statErr := os.Lstat(rPath)
+	if statErr != nil {
+		return nil, fmt.Errorf("stat %w", statErr)
+	}
+
+	return fInfo, nil
 }
 
 // ListDir implements Driver.
 func (driver *Driver) ListDir(_ *ftp.Context, path string, callback func(os.FileInfo) error) error {
 	basepath := driver.realPath(path)
-	return filepath.Walk(basepath, func(f string, info os.FileInfo, err error) error {
+
+	if err := filepath.Walk(basepath, func(f string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -58,7 +64,7 @@ func (driver *Driver) ListDir(_ *ftp.Context, path string, callback func(os.File
 		rPath, _ := filepath.Rel(basepath, f)
 		if rPath == info.Name() {
 			if err = callback(info); err != nil {
-				return err
+				return fmt.Errorf("callback: %w", err)
 			}
 
 			if info.IsDir() {
@@ -66,7 +72,11 @@ func (driver *Driver) ListDir(_ *ftp.Context, path string, callback func(os.File
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return fmt.Errorf("walk dir: %w", err)
+	}
+
+	return nil
 }
 
 // DeleteDir implements Driver.
@@ -74,11 +84,13 @@ func (driver *Driver) DeleteDir(_ *ftp.Context, path string) error {
 	rPath := driver.realPath(path)
 	f, err := os.Lstat(rPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("stat dir: %w", err)
 	}
 
 	if f.IsDir() {
-		return os.RemoveAll(rPath)
+		if err = os.Remove(rPath); err != nil {
+			return fmt.Errorf("remove dir: %w", err)
+		}
 	}
 
 	return errors.New("not a directory")
@@ -89,11 +101,13 @@ func (driver *Driver) DeleteFile(_ *ftp.Context, path string) error {
 	rPath := driver.realPath(path)
 	f, err := os.Lstat(rPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("stat file: %w", err)
 	}
 
 	if !f.IsDir() {
-		return os.Remove(rPath)
+		if err = os.Remove(rPath); err != nil {
+			return fmt.Errorf("remove file: %w", err)
+		}
 	}
 
 	return errors.New("not a file")
@@ -103,13 +117,23 @@ func (driver *Driver) DeleteFile(_ *ftp.Context, path string) error {
 func (driver *Driver) Rename(_ *ftp.Context, fromPath string, toPath string) error {
 	oldPath := driver.realPath(fromPath)
 	newPath := driver.realPath(toPath)
-	return os.Rename(oldPath, newPath)
+
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("rename file: %w", err)
+	}
+
+	return nil
 }
 
 // MakeDir implements Driver.
 func (driver *Driver) MakeDir(_ *ftp.Context, path string) error {
 	rPath := driver.realPath(path)
-	return os.MkdirAll(rPath, os.ModePerm)
+
+	if err := os.MkdirAll(rPath, os.ModePerm); err != nil {
+		return fmt.Errorf("make dir: %w", err)
+	}
+
+	return nil
 }
 
 // GetFile implements Driver.
@@ -117,21 +141,23 @@ func (driver *Driver) GetFile(_ *ftp.Context, path string, offset int64) (int64,
 	rPath := driver.realPath(path)
 	f, err := os.Open(rPath)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("open file: %w", err)
 	}
 	defer func() {
 		if err != nil && f != nil {
-			f.Close()
+			if closeErr := f.Close(); closeErr != nil {
+				err = fmt.Errorf("close file: %w; original error: %w", closeErr, err)
+			}
 		}
 	}()
 
 	info, err := f.Stat()
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("stat file: %w", err)
 	}
 
 	if _, err = f.Seek(offset, io.SeekStart); err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("seek file: %w", err)
 	}
 
 	return info.Size() - offset, f, nil
@@ -162,19 +188,19 @@ func (driver *Driver) PutFile(_ *ftp.Context, destPath string, data io.Reader, o
 	if offset == -1 {
 		if exists {
 			if err = os.Remove(rPath); err != nil {
-				return 0, err
+				return 0, fmt.Errorf("remove file: %w", err)
 			}
 		}
 
-		f, err := os.Create(rPath)
-		if err != nil {
-			return 0, err
+		f, createErr := os.Create(rPath)
+		if createErr != nil {
+			return 0, fmt.Errorf("create file: %w", createErr)
 		}
 		defer f.Close()
 
-		bytes, err := io.Copy(f, data)
-		if err != nil {
-			return 0, err
+		bytes, copyErr := io.Copy(f, data)
+		if copyErr != nil {
+			return 0, fmt.Errorf("write bytes: %w", copyErr)
 		}
 
 		return bytes, nil
@@ -182,13 +208,13 @@ func (driver *Driver) PutFile(_ *ftp.Context, destPath string, data io.Reader, o
 
 	of, err := os.OpenFile(rPath, os.O_APPEND|os.O_RDWR, 0o660)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("open file: %w", err)
 	}
 	defer of.Close()
 
 	info, err := of.Stat()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("stat file: %w", err)
 	}
 
 	if offset > info.Size() {
@@ -196,12 +222,12 @@ func (driver *Driver) PutFile(_ *ftp.Context, destPath string, data io.Reader, o
 	}
 
 	if _, err = of.Seek(offset, io.SeekEnd); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("seek end: %w", err)
 	}
 
 	bytes, err := io.Copy(of, data)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("write bytes: %w", err)
 	}
 
 	return bytes, nil

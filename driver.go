@@ -6,6 +6,7 @@ package ftp
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -54,8 +55,8 @@ type Driver interface {
 	// returns - nil if the new directory was created or any error encountered
 	MakeDir(*Context, string) error
 
-	// params  - path, filepos
-	// returns - a string containing the file data to send to the client
+	// params  - context, path, filepos
+	// returns - file size, file, and error
 	GetFile(*Context, string, int64) (int64, io.ReadCloser, error)
 
 	// params  - destination path, an io.Reader containing the file data
@@ -70,8 +71,8 @@ type MultiDriver struct {
 	drivers map[string]Driver
 }
 
-// NewMultiDriver creates a multi driver to combind multiple driver.
-func NewMultiDriver(drivers map[string]Driver) Driver {
+// NewMultiDriver creates a multi driver to combine multiple drivers.
+func NewMultiDriver(drivers map[string]Driver) *MultiDriver {
 	return &MultiDriver{
 		drivers: drivers,
 	}
@@ -80,19 +81,33 @@ func NewMultiDriver(drivers map[string]Driver) Driver {
 // Stat implements Driver.
 func (driver *MultiDriver) Stat(ctx *Context, path string) (os.FileInfo, error) {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(path, prefix) {
-			return driver.Stat(ctx, strings.TrimPrefix(path, prefix))
+		if !strings.HasPrefix(path, prefix) {
+			continue
 		}
+
+		fInfo, err := driver.Stat(ctx, strings.TrimPrefix(path, prefix))
+		if err != nil {
+			return nil, fmt.Errorf("stat: %w", err)
+		}
+
+		return fInfo, nil
 	}
+
 	return nil, errors.New("not a file")
 }
 
 // ListDir implements Driver.
 func (driver *MultiDriver) ListDir(ctx *Context, path string, callback func(os.FileInfo) error) error {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(path, prefix) {
-			return driver.ListDir(ctx, strings.TrimPrefix(path, prefix), callback)
+		if !strings.HasPrefix(path, prefix) {
+			continue
 		}
+
+		if err := driver.ListDir(ctx, strings.TrimPrefix(path, prefix), callback); err != nil {
+			return fmt.Errorf("list dir: %w", err)
+		}
+
+		return nil
 	}
 	return errors.New("not a directory")
 }
@@ -100,19 +115,32 @@ func (driver *MultiDriver) ListDir(ctx *Context, path string, callback func(os.F
 // DeleteDir implements Driver.
 func (driver *MultiDriver) DeleteDir(ctx *Context, path string) error {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(path, prefix) {
-			return driver.DeleteDir(ctx, strings.TrimPrefix(path, prefix))
+		if !strings.HasPrefix(path, prefix) {
+			continue
 		}
+
+		if err := driver.DeleteDir(ctx, strings.TrimPrefix(path, prefix)); err != nil {
+			return fmt.Errorf("delete: %w", err)
+		}
+
+		return nil
 	}
+
 	return errors.New("not a directory")
 }
 
 // DeleteFile implements Driver.
 func (driver *MultiDriver) DeleteFile(ctx *Context, path string) error {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(path, prefix) {
-			return driver.DeleteFile(ctx, strings.TrimPrefix(path, prefix))
+		if !strings.HasPrefix(path, prefix) {
+			continue
 		}
+
+		if err := driver.DeleteFile(ctx, strings.TrimPrefix(path, prefix)); err != nil {
+			return fmt.Errorf("delete: %w", err)
+		}
+
+		return nil
 	}
 
 	return errors.New("not a file")
@@ -121,9 +149,15 @@ func (driver *MultiDriver) DeleteFile(ctx *Context, path string) error {
 // Rename implements Driver.
 func (driver *MultiDriver) Rename(ctx *Context, fromPath string, toPath string) error {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(fromPath, prefix) {
-			return driver.Rename(ctx, strings.TrimPrefix(fromPath, prefix), strings.TrimPrefix(toPath, prefix))
+		if !strings.HasPrefix(fromPath, prefix) {
+			continue
 		}
+
+		if err := driver.Rename(ctx, strings.TrimPrefix(fromPath, prefix), strings.TrimPrefix(toPath, prefix)); err != nil {
+			return fmt.Errorf("rename: %w", err)
+		}
+
+		return nil
 	}
 
 	return errors.New("not a file")
@@ -132,9 +166,15 @@ func (driver *MultiDriver) Rename(ctx *Context, fromPath string, toPath string) 
 // MakeDir implements Driver.
 func (driver *MultiDriver) MakeDir(ctx *Context, path string) error {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(path, prefix) {
-			return driver.MakeDir(ctx, strings.TrimPrefix(path, prefix))
+		if !strings.HasPrefix(path, prefix) {
+			continue
 		}
+
+		if err := driver.MakeDir(ctx, strings.TrimPrefix(path, prefix)); err != nil {
+			return fmt.Errorf("make dir: %w", err)
+		}
+
+		return nil
 	}
 	return errors.New("not a directory")
 }
@@ -142,9 +182,16 @@ func (driver *MultiDriver) MakeDir(ctx *Context, path string) error {
 // GetFile implements Driver.
 func (driver *MultiDriver) GetFile(ctx *Context, path string, offset int64) (int64, io.ReadCloser, error) {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(path, prefix) {
-			return driver.GetFile(ctx, strings.TrimPrefix(path, prefix), offset)
+		if !strings.HasPrefix(path, prefix) {
+			continue
 		}
+
+		size, data, err := driver.GetFile(ctx, strings.TrimPrefix(path, prefix), offset)
+		if err != nil {
+			return 0, nil, fmt.Errorf("get file: %w", err)
+		}
+
+		return size, data, nil
 	}
 
 	return 0, nil, errors.New("not a file")
@@ -153,9 +200,16 @@ func (driver *MultiDriver) GetFile(ctx *Context, path string, offset int64) (int
 // PutFile implements Driver.
 func (driver *MultiDriver) PutFile(ctx *Context, destPath string, data io.Reader, offset int64) (int64, error) {
 	for prefix, driver := range driver.drivers {
-		if strings.HasPrefix(destPath, prefix) {
-			return driver.PutFile(ctx, strings.TrimPrefix(destPath, prefix), data, offset)
+		if !strings.HasPrefix(destPath, prefix) {
+			continue
 		}
+
+		bWritten, err := driver.PutFile(ctx, strings.TrimPrefix(destPath, prefix), data, offset)
+		if err != nil {
+			return 0, fmt.Errorf("put file: %w", err)
+		}
+
+		return bWritten, nil
 	}
 
 	return 0, errors.New("not a file")

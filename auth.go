@@ -9,7 +9,7 @@ import (
 	"regexp"
 )
 
-// Auth is an interface to auth your ftp user login.
+// Auth is an interface to auth your FTP user login.
 type Auth interface {
 	CheckPasswd(*Context, string, string) (bool, error)
 }
@@ -19,14 +19,14 @@ var (
 	_ Auth = &RegexAuth{}
 )
 
-// SimpleAuth implements Auth interface to provide a memory user login auth.
+// SimpleAuth implements the Auth interface to provide a memory user login auth.
 type SimpleAuth struct {
 	Name     string
 	Password string
 }
 
-// CheckPasswd will check user's password.
-func (a *SimpleAuth) CheckPasswd(ctx *Context, name, pass string) (bool, error) {
+// CheckPasswd will validate the user's password.
+func (a *SimpleAuth) CheckPasswd(_ *Context, name, pass string) (bool, error) {
 	return constantTimeEquals(name, a.Name) && constantTimeEquals(pass, a.Password), nil
 }
 
@@ -48,7 +48,7 @@ func NewRegexAuth(passwordRegex string, usernameRegex string) *RegexAuth {
 }
 
 // CheckPasswd will check user's password.
-func (a *RegexAuth) CheckPasswd(ctx *Context, username, pass string) (bool, error) {
+func (a *RegexAuth) CheckPasswd(_ *Context, username string, pass string) (bool, error) {
 	if a.passwordRegex.MatchString(pass) && a.usernameRegex.MatchString(username) {
 		return true, nil
 	}

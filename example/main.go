@@ -22,7 +22,7 @@ func main() {
 			Password: "admin",
 		},
 		Perm:      ftp.NewSimplePerm("root", "root"),
-		RateLimit: 1000000, // 1MB/s limit
+		RateLimit: 1000000, // 1MB/s limit.
 	})
 	if err != nil {
 		log.Fatal(err)

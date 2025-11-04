@@ -22,7 +22,7 @@ type Driver struct {
 	fs *memfs.FileSystem
 }
 
-func NewDriver() (drv *Driver, err error) {
+func NewDriver() (*Driver, error) {
 	fs, err := memfs.NewFS()
 	if err != nil {
 		return nil, err

@@ -5,7 +5,7 @@
 package integrations
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -14,7 +14,7 @@ import (
 
 	"github.com/globalcyberalliance/ftp-go"
 	"github.com/globalcyberalliance/ftp-go/driver/file"
-	ftpCli "github.com/jlaffaye/ftp"
+	ftpCLI "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -154,12 +154,12 @@ func TestNotification(t *testing.T) {
 	mock := &mockNotifier{}
 
 	runServer(t, opt, []ftp.Notifier{mock}, func() {
-		// Give server 0.5 seconds to get to the listening state
+		// Give the server 0.5 seconds to get to the listening state
 		timeout := time.NewTimer(time.Millisecond * 500)
 
 		for {
-			f, err := ftpCli.Connect("localhost:2121")
-			if err != nil && len(timeout.C) == 0 { // Retry errors
+			f, err := ftpCLI.Dial("localhost:2121")
+			if err != nil && len(timeout.C) == 0 { // Retry errors.
 				continue
 			}
 			require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestNotification(t *testing.T) {
 			r, err := f.RetrFrom("/server_test.go", 2)
 			require.NoError(t, err)
 
-			buf, err := ioutil.ReadAll(r)
+			buf, err := io.ReadAll(r)
 			r.Close()
 			require.NoError(t, err)
 			assert.Equal(t, "st", string(buf))

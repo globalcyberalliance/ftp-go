@@ -40,11 +40,11 @@ type mockConn struct {
 	port int
 }
 
-func (m mockConn) Read(b []byte) (n int, err error) {
+func (m mockConn) Read(_ []byte) (int, error) {
 	return 0, nil
 }
 
-func (m mockConn) Write(b []byte) (n int, err error) {
+func (m mockConn) Write(_ []byte) (int, error) {
 	return 0, nil
 }
 
@@ -63,15 +63,15 @@ func (m mockConn) RemoteAddr() net.Addr {
 	return nil
 }
 
-func (m mockConn) SetDeadline(t time.Time) error {
+func (m mockConn) SetDeadline(_ time.Time) error {
 	return nil
 }
 
-func (m mockConn) SetReadDeadline(t time.Time) error {
+func (m mockConn) SetReadDeadline(_ time.Time) error {
 	return nil
 }
 
-func (m mockConn) SetWriteDeadline(t time.Time) error {
+func (m mockConn) SetWriteDeadline(_ time.Time) error {
 	return nil
 }
 

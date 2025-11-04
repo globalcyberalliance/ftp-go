@@ -11,8 +11,8 @@ import (
 
 // Logger represents an interface to record all ftp information and command.
 type Logger interface {
-	Print(sessionID string, message interface{})
-	Printf(sessionID string, format string, v ...interface{})
+	Print(sessionID string, message any)
+	Printf(sessionID string, format string, v ...any)
 	PrintCommand(sessionID string, command string, params string)
 	PrintResponse(sessionID string, code int, message string)
 }
@@ -21,12 +21,12 @@ type Logger interface {
 type StdLogger struct{}
 
 // Print implements Logger.
-func (logger *StdLogger) Print(sessionID string, message interface{}) {
+func (logger *StdLogger) Print(sessionID string, message any) {
 	log.Printf("%s  %s", sessionID, message)
 }
 
 // Printf implements Logger.
-func (logger *StdLogger) Printf(sessionID string, format string, v ...interface{}) {
+func (logger *StdLogger) Printf(sessionID string, format string, v ...any) {
 	logger.Print(sessionID, fmt.Sprintf(format, v...))
 }
 
@@ -48,13 +48,13 @@ func (logger *StdLogger) PrintResponse(sessionID string, code int, message strin
 type DiscardLogger struct{}
 
 // Print implements Logger.
-func (logger *DiscardLogger) Print(sessionID string, message interface{}) {}
+func (logger *DiscardLogger) Print(_ string, _ any) {}
 
 // Printf implements Logger.
-func (logger *DiscardLogger) Printf(sessionID string, format string, v ...interface{}) {}
+func (logger *DiscardLogger) Printf(_ string, _ string, _ ...any) {}
 
 // PrintCommand implements Logger.
-func (logger *DiscardLogger) PrintCommand(sessionID string, command string, params string) {}
+func (logger *DiscardLogger) PrintCommand(_ string, _ string, _ string) {}
 
 // PrintResponse implements Logger.
-func (logger *DiscardLogger) PrintResponse(sessionID string, code int, message string) {}
+func (logger *DiscardLogger) PrintResponse(_ string, _ int, _ string) {}

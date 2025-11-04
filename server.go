@@ -88,15 +88,15 @@ type (
 	//
 	// Always use the NewServer() method to create a new Server.
 	Server struct {
-		logger   Logger
-		listener net.Listener
-		ctx      context.Context
 		*Options
-		cancel context.CancelFunc
-		// rate limiter per connection
-		rateLimiter  *ratelimit.Limiter
-		ConnCallback func(ctx context.Context, conn net.Conn) net.Conn        // optional callback for wrapping net.Conn before handling
-		ConnContext  func(ctx context.Context, conn net.Conn) context.Context // optional callback for wrapping context.Context before handling
+
+		logger       Logger
+		listener     net.Listener
+		ctx          context.Context
+		cancel       context.CancelFunc
+		rateLimiter  *ratelimit.Limiter                                       // Rate limiter per connection.
+		ConnCallback func(ctx context.Context, conn net.Conn) net.Conn        // Optional callback for wrapping net.Conn before handling.
+		ConnContext  func(ctx context.Context, conn net.Conn) context.Context // Optional callback for wrapping context.Context before handling.
 		listenTo     string
 		feats        string
 		notifiers    notifierList
@@ -119,10 +119,9 @@ func optsWithDefaults(opts *Options) *Options {
 		opts = &Options{}
 	}
 
+	newOpts.Hostname = opts.Hostname
 	if opts.Hostname == "" {
 		newOpts.Hostname = "::"
-	} else {
-		newOpts.Hostname = opts.Hostname
 	}
 
 	newOpts.Port = opts.Port
@@ -160,7 +159,7 @@ func optsWithDefaults(opts *Options) *Options {
 
 	newOpts.Timeout = opts.Timeout
 	if opts.Timeout.Seconds() <= 0 {
-		newOpts.Timeout = 60 * time.Second
+		newOpts.Timeout = defaultTimeout
 	}
 
 	newOpts.DisablePassive = opts.DisablePassive
@@ -226,8 +225,9 @@ func (server *Server) RegisterNotifier(notifier Notifier) {
 
 // NewConn constructs a new object that will handle the FTP protocol over an active net.TCPConn. The TCP connection
 // should already be open before it is handed to this function.
-func (server *Server) newSession(id string, tcpConn net.Conn) *Session {
+func (server *Server) newSession(ctx context.Context, id string, tcpConn net.Conn) *Session {
 	return &Session{
+		ctx:           ctx,
 		id:            id,
 		server:        server,
 		controlReader: bufio.NewReader(tcpConn),
@@ -240,7 +240,7 @@ func (server *Server) newSession(id string, tcpConn net.Conn) *Session {
 		closed:        false,
 		tls:           false,
 		Conn:          tcpConn,
-		Data:          make(map[string]interface{}),
+		Data:          make(map[string]any),
 	}
 }
 
@@ -250,17 +250,21 @@ func (server *Server) newSession(id string, tcpConn net.Conn) *Session {
 // If the server fails to start for any reason, an error will be returned. Common errors are trying to bind to a
 // privileged port or something else is already listening on the same port.
 func (server *Server) ListenAndServe() error {
+	const protoTCP = "tcp"
 	var listener net.Listener
 	var err error
 
+	ctx := context.Background()
+	conf := &net.ListenConfig{}
+
 	if server.Options.TLSConfig != nil {
 		if server.Options.ExplicitFTPS {
-			listener, err = net.Listen("tcp", server.listenTo)
+			listener, err = conf.Listen(ctx, protoTCP, server.listenTo)
 		} else {
-			listener, err = tls.Listen("tcp", server.listenTo, server.Options.TLSConfig)
+			listener, err = tls.Listen(protoTCP, server.listenTo, server.Options.TLSConfig)
 		}
 	} else {
-		listener, err = net.Listen("tcp", server.listenTo)
+		listener, err = conf.Listen(ctx, protoTCP, server.listenTo)
 	}
 	if err != nil {
 		return fmt.Errorf("open listener: %w", err)
@@ -278,12 +282,15 @@ func (server *Server) Serve(l net.Listener) error {
 	server.ctx, server.cancel = context.WithCancel(context.Background())
 	defer server.cancel()
 
-	sessionID := newSessionID()
+	sessionID, err := newSessionID()
+	if err != nil {
+		return fmt.Errorf("new session: %w", err)
+	}
 
 	for {
-		rawConn, err := server.listener.Accept()
-		if err != nil {
-			return fmt.Errorf("accept connection: %w", err)
+		rawConn, lErr := server.listener.Accept()
+		if lErr != nil {
+			return fmt.Errorf("accept connection: %w", lErr)
 		}
 
 		var ctx context.Context
@@ -315,7 +322,7 @@ func (server *Server) Serve(l net.Listener) error {
 			ctx:    ctx,
 		}
 
-		ftpConn := server.newSession(sessionID, conn)
+		ftpConn := server.newSession(ctx, sessionID, conn)
 		go ftpConn.Serve()
 	}
 }
@@ -327,7 +334,9 @@ func (server *Server) Shutdown() error {
 	}
 
 	if server.listener != nil {
-		return server.listener.Close()
+		if err := server.listener.Close(); err != nil {
+			return fmt.Errorf("close listener: %w", err)
+		}
 	}
 
 	// Server wasn't started.

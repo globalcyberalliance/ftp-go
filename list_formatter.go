@@ -25,28 +25,36 @@ func (formatter listFormatter) Short() []byte {
 
 // Detailed returns a string that lists the collection of files with extra detail, one per line.
 func (formatter listFormatter) Detailed() []byte {
+	const hardLinkCount = 1 // Hard link count (always 1 for simplicity).
+	const sizePadding = 12  // Left padding for the file size field.
 	var buf bytes.Buffer
+	oneYearAgo := time.Now().AddDate(-1, 0, 0)
+
 	for _, file := range formatter {
 		fmt.Fprint(&buf, file.Mode().String())
-		fmt.Fprintf(&buf, " 1 %s %s ", file.Owner(), file.Group())
-		fmt.Fprint(&buf, lpad(strconv.FormatInt(file.Size(), 10), 12))
-		if file.ModTime().Before(time.Now().AddDate(-1, 0, 0)) {
+		fmt.Fprintf(&buf, " %d %s %s ", hardLinkCount, file.Owner(), file.Group())
+		fmt.Fprint(&buf, lpad(strconv.FormatInt(file.Size(), 10), sizePadding))
+
+		if file.ModTime().Before(oneYearAgo) {
 			fmt.Fprint(&buf, file.ModTime().Format(" Jan _2  2006 "))
 		} else {
 			fmt.Fprint(&buf, file.ModTime().Format(" Jan _2 15:04 "))
 		}
+
 		fmt.Fprintf(&buf, "%s\r\n", file.Name())
 	}
+
 	return buf.Bytes()
 }
 
-func lpad(input string, length int) (result string) {
+func lpad(input string, length int) string {
 	if len(input) < length {
-		result = strings.Repeat(" ", length-len(input)) + input
-	} else if len(input) == length {
-		result = input
-	} else {
-		result = input[0:length]
+		return strings.Repeat(" ", length-len(input)) + input
 	}
-	return result
+
+	if len(input) == length {
+		return input
+	}
+
+	return input[0:length]
 }
