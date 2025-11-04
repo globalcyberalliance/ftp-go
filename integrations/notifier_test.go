@@ -26,97 +26,97 @@ type mockNotifier struct {
 	lock    sync.Mutex
 }
 
-func (m *mockNotifier) BeforeCommand(ctx *ftp.Context, command string) {
+func (m *mockNotifier) BeforeCommand(_ *ftp.Context, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforeCommand")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) BeforeLoginUser(ctx *ftp.Context, userName string) {
+func (m *mockNotifier) BeforeLoginUser(_ *ftp.Context, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforeLoginUser")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) BeforePutFile(ctx *ftp.Context, dstPath string) {
+func (m *mockNotifier) BeforePutFile(_ *ftp.Context, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforePutFile")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) BeforeDeleteFile(ctx *ftp.Context, dstPath string) {
+func (m *mockNotifier) BeforeDeleteFile(_ *ftp.Context, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforeDeleteFile")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) BeforeChangeCurDir(ctx *ftp.Context, oldCurDir, newCurDir string) {
+func (m *mockNotifier) BeforeChangeCurDir(_ *ftp.Context, _ string, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforeChangeCurDir")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) BeforeCreateDir(ctx *ftp.Context, dstPath string) {
+func (m *mockNotifier) BeforeCreateDir(_ *ftp.Context, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforeCreateDir")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) BeforeDeleteDir(ctx *ftp.Context, dstPath string) {
+func (m *mockNotifier) BeforeDeleteDir(_ *ftp.Context, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforeDeleteDir")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) BeforeDownloadFile(ctx *ftp.Context, dstPath string) {
+func (m *mockNotifier) BeforeDownloadFile(_ *ftp.Context, _ string) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "BeforeDownloadFile")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterCommand(ctx *ftp.Context, command string, supported bool) {
+func (m *mockNotifier) AfterCommand(_ *ftp.Context, _ string, _ bool) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterCommand")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterUserLogin(ctx *ftp.Context, userName, password string, passMatched bool, err error) {
+func (m *mockNotifier) AfterUserLogin(_ *ftp.Context, _ string, _ string, _ bool, _ error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterUserLogin")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterFilePut(ctx *ftp.Context, dstPath string, size int64, err error) {
+func (m *mockNotifier) AfterFilePut(_ *ftp.Context, _ string, _ int64, _ error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterFilePut")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterFileDeleted(ctx *ftp.Context, dstPath string, err error) {
+func (m *mockNotifier) AfterFileDeleted(_ *ftp.Context, _ string, _ error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterFileDeleted")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterCurDirChanged(ctx *ftp.Context, oldCurDir, newCurDir string, err error) {
+func (m *mockNotifier) AfterCurDirChanged(_ *ftp.Context, _ string, _ string, _ error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterCurDirChanged")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterDirCreated(ctx *ftp.Context, dstPath string, err error) {
+func (m *mockNotifier) AfterDirCreated(_ *ftp.Context, _ string, _ error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterDirCreated")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterDirDeleted(ctx *ftp.Context, dstPath string, err error) {
+func (m *mockNotifier) AfterDirDeleted(_ *ftp.Context, _ string, _ error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterDirDeleted")
 	m.lock.Unlock()
 }
 
-func (m *mockNotifier) AfterFileDownloaded(ctx *ftp.Context, dstPath string, size int64, err error) {
+func (m *mockNotifier) AfterFileDownloaded(_ *ftp.Context, _ string, _ int64, _ error) {
 	m.lock.Lock()
 	m.actions = append(m.actions, "AfterFileDownloaded")
 	m.lock.Unlock()
@@ -127,7 +127,7 @@ func assetMockNotifier(t *testing.T, mock *mockNotifier, lastActions []string) {
 		return
 	}
 	mock.lock.Lock()
-	assert.EqualValues(t, lastActions, mock.actions[len(mock.actions)-len(lastActions):])
+	assert.Equal(t, lastActions, mock.actions[len(mock.actions)-len(lastActions):])
 	mock.lock.Unlock()
 }
 
@@ -180,7 +180,7 @@ func TestNotification(t *testing.T) {
 			buf, err := ioutil.ReadAll(r)
 			r.Close()
 			require.NoError(t, err)
-			assert.EqualValues(t, "st", string(buf))
+			assert.Equal(t, "st", string(buf))
 			assetMockNotifier(t, mock, []string{"BeforeDownloadFile", "AfterFileDownloaded"})
 
 			require.NoError(t, f.Rename("/server_test.go", "/test.go"))

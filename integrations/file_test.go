@@ -5,6 +5,7 @@
 package integrations
 
 import (
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -14,7 +15,7 @@ import (
 
 	"github.com/globalcyberalliance/ftp-go"
 	"github.com/globalcyberalliance/ftp-go/driver/file"
-	ftpCli "github.com/jlaffaye/ftp"
+	ftpCLI "github.com/jlaffaye/ftp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,11 +41,11 @@ func TestFileDriver(t *testing.T) {
 	}
 
 	runServer(t, opt, nil, func() {
-		// Give server 0.5 seconds to get to the listening state
+		// Give the server 0.5 seconds to reach the listening state.
 		timeout := time.NewTimer(time.Millisecond * 500)
 
 		for {
-			f, err := ftpCli.Connect("localhost:2122")
+			f, err := ftpCLI.Dial("localhost:2122")
 			if err != nil && len(timeout.C) == 0 { // Retry errors
 				continue
 			}
@@ -59,22 +60,22 @@ func TestFileDriver(t *testing.T) {
 			names, err := f.NameList("/")
 			require.NoError(t, err)
 			assert.Len(t, names, 1)
-			assert.EqualValues(t, "server_test.go", names[0])
+			assert.Equal(t, "server_test.go", names[0])
 
-			bs, err := ioutil.ReadFile("./testdata/server_test.go")
+			bs, err := os.ReadFile("./testdata/server_test.go")
 			require.NoError(t, err)
-			assert.EqualValues(t, content, string(bs))
+			assert.Equal(t, content, string(bs))
 
 			entries, err := f.List("/")
 			require.NoError(t, err)
 			assert.Len(t, entries, 1)
-			assert.EqualValues(t, "server_test.go", entries[0].Name)
+			assert.Equal(t, "server_test.go", entries[0].Name)
 			assert.EqualValues(t, 4, entries[0].Size)
-			assert.EqualValues(t, ftpCli.EntryTypeFile, entries[0].Type)
+			assert.Equal(t, ftpCLI.EntryTypeFile, entries[0].Type)
 
 			curDir, err := f.CurrentDir()
 			require.NoError(t, err)
-			assert.EqualValues(t, "/", curDir)
+			assert.Equal(t, "/", curDir)
 
 			size, err := f.FileSize("/server_test.go")
 			require.NoError(t, err)
@@ -83,10 +84,10 @@ func TestFileDriver(t *testing.T) {
 			r, err := f.RetrFrom("/server_test.go", 2)
 			require.NoError(t, err)
 
-			buf, err := ioutil.ReadAll(r)
+			buf, err := io.ReadAll(r)
 			r.Close()
 			require.NoError(t, err)
-			assert.EqualValues(t, "st", string(buf))
+			assert.Equal(t, "st", string(buf))
 
 			err = f.Rename("/server_test.go", "/test.go")
 			require.NoError(t, err)
@@ -102,7 +103,7 @@ func TestFileDriver(t *testing.T) {
 
 			curDir, err = f.CurrentDir()
 			require.NoError(t, err)
-			assert.EqualValues(t, "/src", curDir)
+			assert.Equal(t, "/src", curDir)
 
 			require.NoError(t, f.Stor("server_test.go", strings.NewReader(content)))
 
@@ -112,14 +113,14 @@ func TestFileDriver(t *testing.T) {
 			buf, err = ioutil.ReadAll(r)
 			r.Close()
 			require.NoError(t, err)
-			assert.EqualValues(t, "test", string(buf))
+			assert.Equal(t, "test", string(buf))
 
 			err = f.RemoveDir("/src")
 			require.NoError(t, err)
 
 			curDir, err = f.CurrentDir()
 			require.NoError(t, err)
-			assert.EqualValues(t, "/", curDir)
+			assert.Equal(t, "/", curDir)
 
 			require.NoError(t, f.Stor(" file_name .test", strings.NewReader("tttt")))
 			require.NoError(t, f.Delete(" file_name .test"))
@@ -140,7 +141,7 @@ func TestLogin(t *testing.T) {
 	driver, err := file.NewDriver("./testdata")
 	require.NoError(t, err)
 
-	// Server options without hostname or port
+	// Server options without a hostname or port.
 	opt := &ftp.Options{
 		Name:   "test ftpd",
 		Driver: driver,
@@ -152,11 +153,11 @@ func TestLogin(t *testing.T) {
 		Logger: new(ftp.DiscardLogger),
 	}
 
-	// Start the listener
+	// Start the listener.
 	l, err := net.Listen("tcp", ":2123")
 	require.NoError(t, err)
 
-	// Start the server using the listener
+	// Start the server using the listener.
 	s, err := ftp.NewServer(opt)
 	require.NoError(t, err)
 	go func() {
@@ -164,10 +165,10 @@ func TestLogin(t *testing.T) {
 		assert.EqualError(t, err, ftp.ErrServerClosed.Error())
 	}()
 
-	// Give server 0.5 seconds to get to the listening state
+	// Give the server 0.5 seconds to reach the listening state.
 	timeout := time.NewTimer(time.Millisecond * 500)
 	for {
-		f, err := ftpCli.Connect("localhost:2123")
+		f, err := ftpCLI.Dial("localhost:2123")
 		if err != nil && len(timeout.C) == 0 { // Retry errors
 			continue
 		}

@@ -210,7 +210,7 @@ func (sess *Session) upgradeToTLS() error {
 
 	tlsConn := tls.Server(sess.Conn, sess.server.TLSConfig)
 	if err := tlsConn.Handshake(); err != nil {
-		return err
+		return fmt.Errorf("tls handshake: %w", err)
 	}
 
 	sess.Conn = tlsConn
@@ -250,7 +250,7 @@ func (sess *Session) receiveLine(line string) {
 
 	if cmdObj.RequireParam() && param == "" {
 		sess.writeMessage(553, "action aborted, required param missing")
-	} else if sess.server.Options.ForceTLS && !sess.tls && !(cmdObj == sess.server.Commands["AUTH"] && param == "TLS") {
+	} else if sess.server.Options.ForceTLS && !sess.tls && (cmdObj != sess.server.Commands["AUTH"] || param != "TLS") {
 		sess.writeMessage(534, "Request denied for policy reasons. AUTH TLS required.")
 	} else if cmdObj.RequireAuth() && sess.user == "" {
 		sess.writeMessage(530, "not logged in")
@@ -314,15 +314,16 @@ func (sess *Session) BuildPath(filename string) string {
 // The driver implementation is responsible for deciding how to treat this path. They must not read the path off disk.
 // They probably want to prefix the path with something to scope the users access to a sandbox.
 func (sess *Session) buildPath(filename string) (fullPath string) {
+	fullPath = filepath.Clean(sess.curDir)
 	if len(filename) > 0 && filename[0:1] == "/" {
 		fullPath = filepath.Clean(filename)
 	} else if len(filename) > 0 && filename != "-a" {
 		fullPath = filepath.Clean(sess.curDir + "/" + filename)
-	} else {
-		fullPath = filepath.Clean(sess.curDir)
 	}
-	fullPath = strings.Replace(fullPath, "//", "/", -1)
-	fullPath = strings.Replace(fullPath, string(filepath.Separator), "/", -1)
+
+	fullPath = strings.ReplaceAll(fullPath, "//", "/")
+	fullPath = strings.ReplaceAll(fullPath, string(filepath.Separator), "/")
+
 	return fullPath
 }
 
@@ -344,7 +345,7 @@ func (sess *Session) sendOutofBandDataWriter(data io.ReadCloser) error {
 	if err != nil {
 		sess.dataConn.Close()
 		sess.dataConn = nil
-		return err
+		return fmt.Errorf("write out of band data: %w", err)
 	}
 
 	message := "Closing data connection, sent " + strconv.Itoa(int(bytes)) + " bytes"

@@ -4,24 +4,33 @@
 
 package ratelimit
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 type reader struct {
-	r io.Reader
-	l *Limiter
+	reader  io.Reader
+	limiter *Limiter
 }
 
-// Read Read.
+// Read reads data from the underlying reader while respecting the rate limit defined in the limiter.
+// It returns the number of bytes read and an error if the read operation fails.
 func (r *reader) Read(buf []byte) (int, error) {
-	n, err := r.r.Read(buf)
-	r.l.Wait(n)
-	return n, err
+	r.limiter.Wait(len(buf))
+
+	n, err := r.reader.Read(buf)
+	if err != nil {
+		return n, fmt.Errorf("read: %w", err)
+	}
+
+	return n, nil
 }
 
 // Reader returns a reader with limiter.
 func Reader(r io.Reader, l *Limiter) io.Reader {
 	return &reader{
-		r: r,
-		l: l,
+		reader:  r,
+		limiter: l,
 	}
 }

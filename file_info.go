@@ -8,6 +8,7 @@ import "os"
 
 type fileInfo struct {
 	os.FileInfo
+
 	owner string
 	group string
 	mode  os.FileMode

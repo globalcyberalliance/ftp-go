@@ -18,12 +18,10 @@ import (
 	"github.com/globalcyberalliance/ftp-go/ratelimit"
 )
 
-var (
-	version = "2.0beta"
+const version = "2.0beta"
 
-	// ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown was requested.
-	ErrServerClosed = errors.New("ftp: Server closed")
-)
+// ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown was requested.
+var ErrServerClosed = errors.New("ftp: Server closed")
 
 type (
 	// Options contains parameters for server.NewServer().
@@ -31,57 +29,57 @@ type (
 		// The driver that will be used to handle files persistent
 		Driver Driver
 
-		// How to handle the authenticate requests
+		// How to handle authentication requests
 		Auth Auth
 
 		// How to handle the perm controls
 		Perm Perm
 
-		// A logger implementation, if nil the StdLogger is used
+		// A logger implementation, if nil the StdLogger is used.
 		Logger Logger
 
-		// This server supported commands, if blank, it will be defaultCommands
-		// So that users could override the Commands
+		// The server's supported commands. Defaults to defaultCommands.
 		Commands map[string]Command
 
-		// Server Name, Default is Go Ftp Server
+		// Server Name, defaults to Go Ftp Server.
 		Name string
 
 		// The hostname that the FTP server should listen on. Optional, defaults to
 		// "::", which means all hostnames on ipv4 and ipv6.
 		Hostname string
 
-		// Public IP of the server
+		// Public IP of the server,
 		PublicIP string
 
-		// Disable use of passive ports
+		// Disable the use of passive ports.
 		DisablePassive bool
 
-		// Passive ports
+		// Passive ports.
 		PassivePorts string
 
+		// WelcomeMessage is a customizable message displayed to users upon successful connection to the server.
 		WelcomeMessage string
 
 		// The port that the FTP should listen on. Optional, defaults to 3000. In
 		// a production environment you will probably want to change this to 21.
 		Port int
 
-		// Rate Limit per connection bytes per second, 0 means no limit
+		// Rate Limit per connection bytes per second, 0 means no limit.
 		RateLimit int64
 
-		// Timeout is used to restrict the total length of a session
+		// Timeout is used to restrict the total length of a session.
 		Timeout time.Duration
 
-		// CommandsMu controls access to the Commands map
+		// CommandsMu controls access to the Commands map.
 		CommandsMu sync.RWMutex
 
-		// TLSConfig if supplied, will enable TLS on the server
+		// TLSConfig if supplied, will enable TLS on the server.
 		TLSConfig *tls.Config
 
-		// If true, TLS is used in RFC4217 mode
+		// If true, TLS is used in RFC4217 mode.
 		ExplicitFTPS bool
 
-		// If true, client must upgrade to TLS before sending any other command
+		// If true, client must upgrade to TLS before sending any other command.
 		ForceTLS bool
 	}
 
@@ -127,57 +125,51 @@ func optsWithDefaults(opts *Options) *Options {
 		newOpts.Hostname = opts.Hostname
 	}
 
+	newOpts.Port = opts.Port
 	if opts.Port == 0 {
 		newOpts.Port = 2121
-	} else {
-		newOpts.Port = opts.Port
 	}
 
-	newOpts.Driver = opts.Driver
+	newOpts.Name = opts.Name
 	if opts.Name == "" {
 		newOpts.Name = "Go FTP Server"
-	} else {
-		newOpts.Name = opts.Name
 	}
 
+	newOpts.WelcomeMessage = opts.WelcomeMessage
 	if opts.WelcomeMessage == "" {
 		newOpts.WelcomeMessage = defaultWelcomeMessage
-	} else {
-		newOpts.WelcomeMessage = opts.WelcomeMessage
 	}
 
 	if opts.Auth != nil {
 		newOpts.Auth = opts.Auth
 	}
 
+	newOpts.Logger = &StdLogger{}
 	if opts.Logger != nil {
 		newOpts.Logger = opts.Logger
-	} else {
-		newOpts.Logger = &StdLogger{}
 	}
 
-	if opts.Commands == nil {
+	newOpts.Commands = opts.Commands
+	if len(opts.Commands) == 0 {
 		newOpts.Commands = DefaultCommands()
-	} else {
-		newOpts.Commands = opts.Commands
 	}
 
 	if opts.DisablePassive {
 		delete(newOpts.Commands, "PASV")
 	}
 
+	newOpts.Timeout = opts.Timeout
 	if opts.Timeout.Seconds() <= 0 {
 		newOpts.Timeout = 60 * time.Second
-	} else {
-		newOpts.Timeout = opts.Timeout
 	}
 
 	newOpts.DisablePassive = opts.DisablePassive
+	newOpts.Driver = opts.Driver
+	newOpts.ExplicitFTPS = opts.ExplicitFTPS
 	newOpts.Perm = opts.Perm
 	newOpts.TLSConfig = opts.TLSConfig
-	newOpts.ExplicitFTPS = opts.ExplicitFTPS
-	newOpts.PublicIP = opts.PublicIP
 	newOpts.PassivePorts = opts.PassivePorts
+	newOpts.PublicIP = opts.PublicIP
 	newOpts.RateLimit = opts.RateLimit
 
 	return &newOpts
@@ -271,7 +263,7 @@ func (server *Server) ListenAndServe() error {
 		listener, err = net.Listen("tcp", server.listenTo)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("open listener: %w", err)
 	}
 
 	server.logger.Printf("", "%s listening on %d", server.Name, server.Port)
@@ -291,7 +283,7 @@ func (server *Server) Serve(l net.Listener) error {
 	for {
 		rawConn, err := server.listener.Accept()
 		if err != nil {
-			return err
+			return fmt.Errorf("accept connection: %w", err)
 		}
 
 		var ctx context.Context

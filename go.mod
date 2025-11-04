@@ -1,11 +1,11 @@
 module github.com/globalcyberalliance/ftp-go
 
-go 1.22
+go 1.23.0
 
 require (
 	github.com/absfs/memfs v0.0.0-20230318170722-e8d59e67c8b1
 	github.com/jlaffaye/ftp v0.2.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
@@ -15,5 +15,6 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

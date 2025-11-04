@@ -4,23 +4,33 @@
 
 package ratelimit
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 type writer struct {
-	w io.Writer
-	l *Limiter
+	writer  io.Writer
+	limiter *Limiter
 }
 
-// Write Write.
+// Write writes the provided byte slice to the underlying writer while respecting the rate limit defined in the limiter.
+// It returns the number of bytes written and an error if the write operation fails.
 func (w *writer) Write(buf []byte) (int, error) {
-	w.l.Wait(len(buf))
-	return w.w.Write(buf)
+	w.limiter.Wait(len(buf))
+
+	n, err := w.writer.Write(buf)
+	if err != nil {
+		return 0, fmt.Errorf("write: %w", err)
+	}
+
+	return n, nil
 }
 
 // Writer returns a writer with limiter.
 func Writer(w io.Writer, l *Limiter) io.Writer {
 	return &writer{
-		w: w,
-		l: l,
+		writer:  w,
+		limiter: l,
 	}
 }

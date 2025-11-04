@@ -411,17 +411,13 @@ func (cmd commandLprt) Execute(sess *Session, param string) {
 	}
 	portAddress := parts[3+addressLength : 3+addressLength+portLength]
 
-	// Convert string[] to byte[]
-	portBytes := make([]byte, portLength)
-	for i := range portAddress {
-		p, _ := strconv.Atoi(portAddress[i])
-		portBytes[i] = byte(p)
+	port, err := parsePortFromBytes(portAddress)
+	if err != nil {
+		sess.writeMessage(522, "Network protocol not supported, use 4")
+		return
 	}
 
-	// convert the bytes to an int
-	port := int(binary.BigEndian.Uint16(portBytes))
-
-	// if the existing connection is on the same host/port don't reconnect
+	// If the existing connection is on the same, host/port don't reconnect.
 	if sess.dataConn.Host() == host && sess.dataConn.Port() == port {
 		return
 	}
@@ -431,8 +427,29 @@ func (cmd commandLprt) Execute(sess *Session, param string) {
 		sess.writeMessage(425, "Data connection failed")
 		return
 	}
+
 	sess.dataConn = socket
 	sess.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
+}
+
+// parsePortFromBytes converts a slice of port address strings to a port number.
+// Each string represents a byte of the port number in big-endian order.
+func parsePortFromBytes(portAddress []string) (int, error) {
+	portBytes := make([]byte, len(portAddress))
+	for i, portPart := range portAddress {
+		p, err := strconv.Atoi(portPart)
+		if err != nil {
+			return 0, fmt.Errorf("invalid port byte at position %d: %w", i, err)
+		}
+
+		portBytes[i] = byte(p)
+	}
+
+	if len(portBytes) != 2 {
+		return 0, fmt.Errorf("expected 2 port bytes, got %d", len(portBytes))
+	}
+
+	return int(binary.BigEndian.Uint16(portBytes)), nil
 }
 
 // commandEpsv responds to the EPSV FTP command. It allows the client to request a passive data socket with more options

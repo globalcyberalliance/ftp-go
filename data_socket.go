@@ -119,7 +119,8 @@ type passiveSocket struct {
 //
 // Originally from https://stackoverflow.com/a/52152912/164234
 func isErrorAddressAlreadyInUse(err error) bool {
-	errOpError, ok := err.(*net.OpError)
+	errOpError := &net.OpError{}
+	ok := errors.As(err, &errOpError)
 	if !ok {
 		return false
 	}
