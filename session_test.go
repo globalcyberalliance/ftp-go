@@ -5,6 +5,7 @@
 package ftp
 
 import (
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -73,6 +74,30 @@ func (m mockConn) SetReadDeadline(_ time.Time) error {
 
 func (m mockConn) SetWriteDeadline(_ time.Time) error {
 	return nil
+}
+
+type mockDataSocket struct{ closed bool }
+
+func (m *mockDataSocket) Host() string                        { return "" }
+func (m *mockDataSocket) Port() int                           { return 0 }
+func (m *mockDataSocket) Read(_ []byte) (int, error)          { return 0, nil }
+func (m *mockDataSocket) ReadFrom(_ io.Reader) (int64, error) { return 0, nil }
+func (m *mockDataSocket) Write(p []byte) (int, error)         { return len(p), nil }
+func (m *mockDataSocket) Close() error                        { m.closed = true; return nil }
+
+func TestSessionCloseClosesDataConn(t *testing.T) {
+	dataConn := &mockDataSocket{}
+	sess := &Session{Conn: mockConn{}, dataConn: dataConn}
+
+	if err := sess.Close(); err != nil {
+		t.Fatalf("close session: %v", err)
+	}
+	if !dataConn.closed {
+		t.Fatal("expected data connection to be closed")
+	}
+	if sess.dataConn != nil {
+		t.Fatal("expected data connection to be cleared")
+	}
 }
 
 func TestPassiveListenIP(t *testing.T) {

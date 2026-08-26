@@ -235,16 +235,17 @@ func (sess *Session) Close() error {
 	sess.reqUser = ""
 	sess.user = ""
 
-	if err := sess.Conn.Close(); err != nil {
-		return fmt.Errorf("close connection: %w", err)
-	}
-
-	if sess.dataConn != nil {
+	// Close the data connection first so a failure closing the control connection can't strand it.
+	if dataConn := sess.dataConn; dataConn != nil {
 		sess.dataConn = nil
 
-		if err := sess.dataConn.Close(); err != nil {
+		if err := dataConn.Close(); err != nil {
 			return fmt.Errorf("close data connection: %w", err)
 		}
+	}
+
+	if err := sess.Conn.Close(); err != nil {
+		return fmt.Errorf("close connection: %w", err)
 	}
 
 	return nil
