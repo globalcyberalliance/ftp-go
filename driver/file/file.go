@@ -92,7 +92,7 @@ func (driver *Driver) DeleteDir(_ *ftp.Context, path string) error {
 	}
 
 	// RMD . resolves to the root, which an empty root would otherwise let a client delete.
-	if rPath == driver.RootPath {
+	if rPath == filepath.Clean(driver.RootPath) {
 		return errors.New("cannot remove root directory")
 	}
 
