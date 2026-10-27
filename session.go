@@ -122,14 +122,11 @@ func (sess *Session) DataConn() DataSocket {
 }
 
 func (sess *Session) passiveListenIP() string {
-	var listenIP string
-
-	tcpAddr, ok := sess.Conn.LocalAddr().(*net.TCPAddr)
-	if ok {
-		listenIP = tcpAddr.IP.String()
-	}
-	if len(sess.PublicIP()) > 0 {
-		listenIP = sess.PublicIP()
+	listenIP := sess.PublicIP()
+	if listenIP == "" {
+		if tcpAddr, ok := sess.Conn.LocalAddr().(*net.TCPAddr); ok {
+			listenIP = tcpAddr.IP.String()
+		}
 	}
 
 	if listenIP == "::1" {
@@ -227,6 +224,16 @@ func (sess *Session) Serve() {
 	}
 
 	sess.log("Connection Terminated")
+}
+
+// setDataConn replaces the data connection, closing the old one so repeated PORT commands don't leak sockets.
+func (sess *Session) setDataConn(dataConn DataSocket) {
+	if old := sess.dataConn; old != nil {
+		// A passive socket's Close waits on its pending Accept, which can take up to a minute.
+		go func() { _ = old.Close() }()
+	}
+
+	sess.dataConn = dataConn
 }
 
 // Close will manually close this connection, even if the client isn't ready.

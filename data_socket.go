@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"runtime"
 	"strconv"
@@ -42,7 +43,7 @@ type (
 	}
 
 	activeSocket struct {
-		conn   *net.TCPConn
+		conn   net.Conn
 		host   string
 		port   int
 		reader io.Reader
@@ -51,33 +52,59 @@ type (
 	}
 )
 
+// activeDialTimeout stops an unreachable PORT address holding the session open.
+const activeDialTimeout = 5 * time.Second
+
+// ErrForeignDataAddress is returned when an active-mode address isn't the client's own.
+var ErrForeignDataAddress = errors.New("ftp: active data address is not the client's")
+
 func newActiveSocket(sess *Session, remote string, port int) (*activeSocket, error) {
 	connectTo := net.JoinHostPort(remote, strconv.Itoa(port))
 
 	sess.log("Opening active data connection to " + connectTo)
 
-	raddr, err := net.ResolveTCPAddr("tcp", connectTo)
-	if err != nil {
-		sess.log(err)
-		return nil, fmt.Errorf("resolve tcp: %w", err)
+	// Any address but the client's own turns the server into a bounce relay and port scanner (RFC 2577).
+	if !isClientAddr(sess.RemoteAddr(), remote) {
+		sess.log(ErrForeignDataAddress)
+		return nil, ErrForeignDataAddress
 	}
 
-	tcpConn, err := net.DialTCP("tcp", nil, raddr)
+	conn, err := (&net.Dialer{Timeout: activeDialTimeout}).DialContext(sess.Context(), "tcp", connectTo)
 	if err != nil {
 		sess.log(err)
 		return nil, fmt.Errorf("dial tcp: %w", err)
 	}
 
 	socket := &activeSocket{
-		conn:   tcpConn,
+		conn:   conn,
 		host:   remote,
 		port:   port,
-		reader: ratelimit.Reader(tcpConn, sess.server.rateLimiter),
-		writer: ratelimit.Writer(tcpConn, sess.server.rateLimiter),
+		reader: ratelimit.Reader(conn, sess.server.rateLimiter),
+		writer: ratelimit.Writer(conn, sess.server.rateLimiter),
 		sess:   sess,
 	}
 
 	return socket, nil
+}
+
+// isClientAddr reports whether host is the IP the control connection came from. Hostnames never match.
+func isClientAddr(client net.Addr, host string) bool {
+	if client == nil {
+		return false
+	}
+
+	clientAddr, err := netip.ParseAddrPort(client.String())
+	if err != nil {
+		return false
+	}
+
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return false
+	}
+
+	// EPRT hosts rarely carry a zone, so link-local clients would never match if zones were compared.
+	return addr.WithZone("").Unmap() == clientAddr.Addr().WithZone("").Unmap()
 }
 
 func (socket *activeSocket) Host() string {
@@ -90,11 +117,11 @@ func (socket *activeSocket) Port() int {
 
 func (socket *activeSocket) Read(p []byte) (int, error) {
 	bRead, err := socket.reader.Read(p)
-	if err != nil {
-		return 0, fmt.Errorf("read: %w", err)
+	if err != nil && err != io.EOF { // io.Copy only treats a bare io.EOF as end of stream.
+		return bRead, fmt.Errorf("read: %w", err)
 	}
 
-	return bRead, nil
+	return bRead, err
 }
 
 func (socket *activeSocket) ReadFrom(r io.Reader) (int64, error) {
@@ -294,7 +321,7 @@ func (socket *passiveSocket) ListenAndServe() error {
 		defer socket.lock.Unlock()
 
 		conn, lErr := listener.Accept()
-		if err != nil {
+		if lErr != nil {
 			socket.err = lErr
 			return
 		}

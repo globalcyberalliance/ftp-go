@@ -20,11 +20,11 @@ func (r *reader) Read(buf []byte) (int, error) {
 	r.limiter.Wait(len(buf))
 
 	n, err := r.reader.Read(buf)
-	if err != nil {
+	if err != nil && err != io.EOF { // io.Copy only treats a bare io.EOF as end of stream.
 		return n, fmt.Errorf("read: %w", err)
 	}
 
-	return n, nil
+	return n, err
 }
 
 // Reader returns a reader with limiter.

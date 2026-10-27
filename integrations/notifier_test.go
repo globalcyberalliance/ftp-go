@@ -6,7 +6,7 @@ package integrations
 
 import (
 	"io"
-	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -127,16 +127,19 @@ func assetMockNotifier(t *testing.T, mock *mockNotifier, lastActions []string) {
 		return
 	}
 	mock.lock.Lock()
-	assert.Equal(t, lastActions, mock.actions[len(mock.actions)-len(lastActions):])
-	mock.lock.Unlock()
+	defer mock.lock.Unlock()
+
+	// Every command fires BeforeCommand/AfterCommand, which would push the events under test out of the window.
+	actions := slices.DeleteFunc(slices.Clone(mock.actions), func(action string) bool {
+		return action == "BeforeCommand" || action == "AfterCommand"
+	})
+	require.GreaterOrEqual(t, len(actions), len(lastActions))
+	assert.Equal(t, lastActions, actions[len(actions)-len(lastActions):])
 }
 
 func TestNotification(t *testing.T) {
-	err := os.MkdirAll("./testdata", os.ModePerm)
-	require.NoError(t, err)
-
 	perm := ftp.NewSimplePerm("test", "test")
-	driver, err := file.NewDriver("./testdata")
+	driver, err := file.NewDriver(t.TempDir())
 	require.NoError(t, err)
 
 	opt := &ftp.Options{

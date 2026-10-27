@@ -361,7 +361,7 @@ func (cmd commandEPRT) Execute(sess *Session, param string) {
 		return
 	}
 
-	sess.dataConn = socket
+	sess.setDataConn(socket)
 	sess.writeMessage(CodeCommandOK, "Connection established ("+strconv.Itoa(port)+")")
 }
 
@@ -426,18 +426,13 @@ func (cmd commandLPRT) Execute(sess *Session, param string) {
 		return
 	}
 
-	// If the existing connection is on the same, host/port don't reconnect.
-	if sess.dataConn.Host() == host && sess.dataConn.Port() == port {
-		return
-	}
-
 	socket, err := newActiveSocket(sess, host, port)
 	if err != nil {
 		sess.writeMessage(CodeCannotOpenDataConnection, "Data connection failed")
 		return
 	}
 
-	sess.dataConn = socket
+	sess.setDataConn(socket)
 	sess.writeMessage(CodeCommandOK, "Connection established ("+strconv.Itoa(port)+")")
 }
 
@@ -931,7 +926,7 @@ func (cmd commandPORT) Execute(sess *Session, param string) {
 		return
 	}
 
-	sess.dataConn = socket
+	sess.setDataConn(socket)
 	sess.writeMessage(CodeCommandOK, fmt.Sprintf("Connection established (%d)", port))
 }
 

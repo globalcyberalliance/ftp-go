@@ -22,7 +22,6 @@ import (
 )
 
 const (
-	testDataDir     = "./testdata"
 	testFileContent = "test"
 	testServerPort  = 2122
 	testTimeout     = 500 * time.Millisecond
@@ -31,9 +30,7 @@ const (
 )
 
 func TestFileDriver(t *testing.T) {
-	// Setup test environment.
-	err := os.MkdirAll(testDataDir, os.ModePerm)
-	require.NoError(t, err)
+	testDataDir := t.TempDir()
 
 	// Create a test server.
 	perm := ftp.NewSimplePerm("test", "test")
@@ -156,11 +153,13 @@ func TestFileDriver(t *testing.T) {
 			// Retrieve file from directory.
 			r, err := client.Retr(testDirName + "/" + testFileName)
 			require.NoError(t, err)
-			defer r.Close()
 
 			buf, err := io.ReadAll(r)
 			require.NoError(t, err)
 			assert.Equal(t, testFileContent, string(buf))
+
+			// Close reads the transfer's 226, which would otherwise answer RemoveDir.
+			require.NoError(t, r.Close())
 
 			// Remove directory.
 			err = client.RemoveDir(testDirName)
@@ -215,11 +214,8 @@ func connectWithRetry(t *testing.T) *ftpCLI.ServerConn {
 }
 
 func TestLogin(t *testing.T) {
-	err := os.MkdirAll("./testdata", os.ModePerm)
-	require.NoError(t, err)
-
 	perm := ftp.NewSimplePerm("test", "test")
-	driver, err := file.NewDriver("./testdata")
+	driver, err := file.NewDriver(t.TempDir())
 	require.NoError(t, err)
 
 	// Server options without a hostname or port.

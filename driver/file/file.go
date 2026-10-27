@@ -87,13 +87,15 @@ func (driver *Driver) DeleteDir(_ *ftp.Context, path string) error {
 		return fmt.Errorf("stat dir: %w", err)
 	}
 
-	if f.IsDir() {
-		if err = os.Remove(rPath); err != nil {
-			return fmt.Errorf("remove dir: %w", err)
-		}
+	if !f.IsDir() {
+		return errors.New("not a directory")
 	}
 
-	return errors.New("not a directory")
+	if err = os.RemoveAll(rPath); err != nil {
+		return fmt.Errorf("remove dir: %w", err)
+	}
+
+	return nil
 }
 
 // DeleteFile implements Driver.
@@ -104,13 +106,15 @@ func (driver *Driver) DeleteFile(_ *ftp.Context, path string) error {
 		return fmt.Errorf("stat file: %w", err)
 	}
 
-	if !f.IsDir() {
-		if err = os.Remove(rPath); err != nil {
-			return fmt.Errorf("remove file: %w", err)
-		}
+	if f.IsDir() {
+		return errors.New("not a file")
 	}
 
-	return errors.New("not a file")
+	if err = os.Remove(rPath); err != nil {
+		return fmt.Errorf("remove file: %w", err)
+	}
+
+	return nil
 }
 
 // Rename implements Driver.

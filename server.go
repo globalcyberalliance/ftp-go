@@ -290,6 +290,10 @@ func (server *Server) Serve(l net.Listener) error {
 	for {
 		rawConn, lErr := server.listener.Accept()
 		if lErr != nil {
+			if server.ctx.Err() != nil {
+				return ErrServerClosed
+			}
+
 			return fmt.Errorf("accept connection: %w", lErr)
 		}
 
