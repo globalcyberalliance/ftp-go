@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"runtime"
 	"strconv"
@@ -42,7 +43,7 @@ type (
 	}
 
 	activeSocket struct {
-		conn   *net.TCPConn
+		conn   net.Conn
 		host   string
 		port   int
 		reader io.Reader
@@ -51,33 +52,63 @@ type (
 	}
 )
 
+// activeDialTimeout stops an unreachable PORT address holding the session open.
+const activeDialTimeout = 5 * time.Second
+
+// ErrForeignDataAddress is returned when an active-mode address isn't the client's own.
+var ErrForeignDataAddress = errors.New("ftp: active data address is not the client's")
+
 func newActiveSocket(sess *Session, remote string, port int) (*activeSocket, error) {
-	connectTo := net.JoinHostPort(remote, strconv.Itoa(port))
-
-	sess.log("Opening active data connection to " + connectTo)
-
-	raddr, err := net.ResolveTCPAddr("tcp", connectTo)
-	if err != nil {
-		sess.log(err)
-		return nil, fmt.Errorf("resolve tcp: %w", err)
+	// Any address but the client's own turns the server into a bounce relay and port scanner (RFC 2577).
+	clientIP, ok := clientDialAddr(sess.RemoteAddr(), remote)
+	if !ok {
+		sess.log(ErrForeignDataAddress)
+		return nil, ErrForeignDataAddress
 	}
 
-	tcpConn, err := net.DialTCP("tcp", nil, raddr)
+	connectTo := net.JoinHostPort(clientIP.String(), strconv.Itoa(port))
+	sess.log("Opening active data connection to " + connectTo)
+
+	conn, err := (&net.Dialer{Timeout: activeDialTimeout}).DialContext(sess.Context(), "tcp", connectTo)
 	if err != nil {
 		sess.log(err)
 		return nil, fmt.Errorf("dial tcp: %w", err)
 	}
 
 	socket := &activeSocket{
-		conn:   tcpConn,
+		conn:   conn,
 		host:   remote,
 		port:   port,
-		reader: ratelimit.Reader(tcpConn, sess.server.rateLimiter),
-		writer: ratelimit.Writer(tcpConn, sess.server.rateLimiter),
+		reader: ratelimit.Reader(conn, sess.server.rateLimiter),
+		writer: ratelimit.Writer(conn, sess.server.rateLimiter),
 		sess:   sess,
 	}
 
 	return socket, nil
+}
+
+// clientDialAddr returns the control connection's IP if host names it. Hostnames never match.
+// Dialing the returned IP keeps the client's zone, which a link-local dial needs and EPRT rarely sends.
+func clientDialAddr(client net.Addr, host string) (netip.Addr, bool) {
+	tcpAddr, ok := client.(*net.TCPAddr)
+	if !ok {
+		return netip.Addr{}, false
+	}
+
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return netip.Addr{}, false
+	}
+
+	clientIP := tcpAddr.AddrPort().Addr().Unmap()
+	addr = addr.Unmap()
+
+	// The same link-local IP on another interface is a different host.
+	if addr.Zone() != "" && addr.Zone() != clientIP.Zone() {
+		return netip.Addr{}, false
+	}
+
+	return clientIP, addr.WithZone("") == clientIP.WithZone("")
 }
 
 func (socket *activeSocket) Host() string {
@@ -90,11 +121,11 @@ func (socket *activeSocket) Port() int {
 
 func (socket *activeSocket) Read(p []byte) (int, error) {
 	bRead, err := socket.reader.Read(p)
-	if err != nil {
-		return 0, fmt.Errorf("read: %w", err)
+	if err != nil && err != io.EOF { // io.Copy only treats a bare io.EOF as end of stream.
+		return bRead, fmt.Errorf("read: %w", err)
 	}
 
-	return bRead, nil
+	return bRead, err
 }
 
 func (socket *activeSocket) ReadFrom(r io.Reader) (int64, error) {
@@ -292,9 +323,10 @@ func (socket *passiveSocket) ListenAndServe() error {
 
 	go func() {
 		defer socket.lock.Unlock()
+		defer func() { _ = listener.Close() }()
 
 		conn, lErr := listener.Accept()
-		if err != nil {
+		if lErr != nil {
 			socket.err = lErr
 			return
 		}
@@ -303,8 +335,6 @@ func (socket *passiveSocket) ListenAndServe() error {
 		socket.conn = conn
 		socket.reader = ratelimit.Reader(socket.conn, socket.sess.server.rateLimiter)
 		socket.writer = ratelimit.Writer(socket.conn, socket.sess.server.rateLimiter)
-
-		_ = listener.Close()
 	}()
 
 	return nil

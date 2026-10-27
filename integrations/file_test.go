@@ -22,7 +22,6 @@ import (
 )
 
 const (
-	testDataDir     = "./testdata"
 	testFileContent = "test"
 	testServerPort  = 2122
 	testTimeout     = 500 * time.Millisecond
@@ -31,9 +30,7 @@ const (
 )
 
 func TestFileDriver(t *testing.T) {
-	// Setup test environment.
-	err := os.MkdirAll(testDataDir, os.ModePerm)
-	require.NoError(t, err)
+	testDataDir := t.TempDir()
 
 	// Create a test server.
 	perm := ftp.NewSimplePerm("test", "test")
@@ -156,11 +153,17 @@ func TestFileDriver(t *testing.T) {
 			// Retrieve file from directory.
 			r, err := client.Retr(testDirName + "/" + testFileName)
 			require.NoError(t, err)
-			defer r.Close()
 
 			buf, err := io.ReadAll(r)
 			require.NoError(t, err)
 			assert.Equal(t, testFileContent, string(buf))
+
+			// Close reads the transfer's 226, which would otherwise answer the next command.
+			require.NoError(t, r.Close())
+
+			// RMD only removes empty directories.
+			require.Error(t, client.RemoveDir(testDirName))
+			require.NoError(t, client.Delete(testFileName))
 
 			// Remove directory.
 			err = client.RemoveDir(testDirName)
@@ -170,6 +173,9 @@ func TestFileDriver(t *testing.T) {
 			curDir, err = client.CurrentDir()
 			require.NoError(t, err)
 			assert.Equal(t, "/", curDir)
+
+			// The root is empty here, so only the root guard stops RMD . from deleting it.
+			require.Error(t, client.RemoveDir("."))
 		})
 
 		t.Run("FileNamesWithSpaces", func(t *testing.T) {
@@ -215,11 +221,8 @@ func connectWithRetry(t *testing.T) *ftpCLI.ServerConn {
 }
 
 func TestLogin(t *testing.T) {
-	err := os.MkdirAll("./testdata", os.ModePerm)
-	require.NoError(t, err)
-
 	perm := ftp.NewSimplePerm("test", "test")
-	driver, err := file.NewDriver("./testdata")
+	driver, err := file.NewDriver(t.TempDir())
 	require.NoError(t, err)
 
 	// Server options without a hostname or port.

@@ -361,7 +361,7 @@ func (cmd commandEPRT) Execute(sess *Session, param string) {
 		return
 	}
 
-	sess.dataConn = socket
+	sess.setDataConn(socket)
 	sess.writeMessage(CodeCommandOK, "Connection established ("+strconv.Itoa(port)+")")
 }
 
@@ -426,18 +426,13 @@ func (cmd commandLPRT) Execute(sess *Session, param string) {
 		return
 	}
 
-	// If the existing connection is on the same, host/port don't reconnect.
-	if sess.dataConn.Host() == host && sess.dataConn.Port() == port {
-		return
-	}
-
 	socket, err := newActiveSocket(sess, host, port)
 	if err != nil {
 		sess.writeMessage(CodeCannotOpenDataConnection, "Data connection failed")
 		return
 	}
 
-	sess.dataConn = socket
+	sess.setDataConn(socket)
 	sess.writeMessage(CodeCommandOK, "Connection established ("+strconv.Itoa(port)+")")
 }
 
@@ -931,7 +926,7 @@ func (cmd commandPORT) Execute(sess *Session, param string) {
 		return
 	}
 
-	sess.dataConn = socket
+	sess.setDataConn(socket)
 	sess.writeMessage(CodeCommandOK, fmt.Sprintf("Connection established (%d)", port))
 }
 
@@ -1179,8 +1174,8 @@ func executeRmd(cmd string, sess *Session, param string) {
 	sess.server.notifiers.BeforeDeleteDir(ctx, realPath)
 	err := sess.server.Driver.DeleteDir(ctx, realPath)
 	sess.server.notifiers.AfterDirDeleted(ctx, realPath, err)
-	if needChangeCurDir {
-		if changeDirErr := sess.changeCurDir(path.Dir(param)); changeDirErr != nil && err == nil {
+	if err == nil && needChangeCurDir {
+		if changeDirErr := sess.changeCurDir(path.Dir(param)); changeDirErr != nil {
 			err = fmt.Errorf("change directory: %w", changeDirErr)
 		}
 	}
