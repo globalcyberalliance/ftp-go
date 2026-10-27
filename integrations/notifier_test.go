@@ -135,6 +135,9 @@ func assetMockNotifier(t *testing.T, mock *mockNotifier, lastActions []string) {
 	})
 	require.GreaterOrEqual(t, len(actions), len(lastActions))
 	assert.Equal(t, lastActions, actions[len(actions)-len(lastActions):])
+
+	// Without this, a step that fires nothing would still match the previous step's events.
+	mock.actions = nil
 }
 
 func TestNotification(t *testing.T) {

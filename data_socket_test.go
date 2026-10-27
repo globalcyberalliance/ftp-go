@@ -57,10 +57,22 @@ func TestNewActiveSocketOnlyDialsTheClient(t *testing.T) {
 	}
 }
 
-func TestIsClientAddrIgnoresZone(t *testing.T) {
+func TestClientDialAddrZones(t *testing.T) {
 	client := &net.TCPAddr{IP: net.ParseIP("fe80::1"), Port: 5000, Zone: "eth0"}
 
-	if !isClientAddr(client, "fe80::1") {
-		t.Fatal("isClientAddr rejected a link-local client's own address without a zone")
+	tests := []struct {
+		host string
+		want string
+	}{
+		{"fe80::1", "fe80::1%eth0"},
+		{"fe80::1%eth0", "fe80::1%eth0"},
+		{"fe80::1%eth1", ""},
+	}
+
+	for _, tt := range tests {
+		addr, ok := clientDialAddr(client, tt.host)
+		if got := addr.String(); ok != (tt.want != "") || ok && got != tt.want {
+			t.Errorf("clientDialAddr(%s) = %s, %v, want %q", tt.host, got, ok, tt.want)
+		}
 	}
 }

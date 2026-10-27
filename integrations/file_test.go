@@ -158,8 +158,12 @@ func TestFileDriver(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, testFileContent, string(buf))
 
-			// Close reads the transfer's 226, which would otherwise answer RemoveDir.
+			// Close reads the transfer's 226, which would otherwise answer the next command.
 			require.NoError(t, r.Close())
+
+			// RMD only removes empty directories.
+			require.Error(t, client.RemoveDir(testDirName))
+			require.NoError(t, client.Delete(testFileName))
 
 			// Remove directory.
 			err = client.RemoveDir(testDirName)
@@ -169,6 +173,9 @@ func TestFileDriver(t *testing.T) {
 			curDir, err = client.CurrentDir()
 			require.NoError(t, err)
 			assert.Equal(t, "/", curDir)
+
+			// The root is empty here, so only the root guard stops RMD . from deleting it.
+			require.Error(t, client.RemoveDir("."))
 		})
 
 		t.Run("FileNamesWithSpaces", func(t *testing.T) {

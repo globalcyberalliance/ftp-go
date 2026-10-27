@@ -1174,8 +1174,8 @@ func executeRmd(cmd string, sess *Session, param string) {
 	sess.server.notifiers.BeforeDeleteDir(ctx, realPath)
 	err := sess.server.Driver.DeleteDir(ctx, realPath)
 	sess.server.notifiers.AfterDirDeleted(ctx, realPath, err)
-	if needChangeCurDir {
-		if changeDirErr := sess.changeCurDir(path.Dir(param)); changeDirErr != nil && err == nil {
+	if err == nil && needChangeCurDir {
+		if changeDirErr := sess.changeCurDir(path.Dir(param)); changeDirErr != nil {
 			err = fmt.Errorf("change directory: %w", changeDirErr)
 		}
 	}

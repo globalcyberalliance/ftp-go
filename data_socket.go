@@ -59,15 +59,15 @@ const activeDialTimeout = 5 * time.Second
 var ErrForeignDataAddress = errors.New("ftp: active data address is not the client's")
 
 func newActiveSocket(sess *Session, remote string, port int) (*activeSocket, error) {
-	connectTo := net.JoinHostPort(remote, strconv.Itoa(port))
-
-	sess.log("Opening active data connection to " + connectTo)
-
 	// Any address but the client's own turns the server into a bounce relay and port scanner (RFC 2577).
-	if !isClientAddr(sess.RemoteAddr(), remote) {
+	clientIP, ok := clientDialAddr(sess.RemoteAddr(), remote)
+	if !ok {
 		sess.log(ErrForeignDataAddress)
 		return nil, ErrForeignDataAddress
 	}
+
+	connectTo := net.JoinHostPort(clientIP.String(), strconv.Itoa(port))
+	sess.log("Opening active data connection to " + connectTo)
 
 	conn, err := (&net.Dialer{Timeout: activeDialTimeout}).DialContext(sess.Context(), "tcp", connectTo)
 	if err != nil {
@@ -87,24 +87,28 @@ func newActiveSocket(sess *Session, remote string, port int) (*activeSocket, err
 	return socket, nil
 }
 
-// isClientAddr reports whether host is the IP the control connection came from. Hostnames never match.
-func isClientAddr(client net.Addr, host string) bool {
-	if client == nil {
-		return false
-	}
-
-	clientAddr, err := netip.ParseAddrPort(client.String())
-	if err != nil {
-		return false
+// clientDialAddr returns the control connection's IP if host names it. Hostnames never match.
+// Dialing the returned IP keeps the client's zone, which a link-local dial needs and EPRT rarely sends.
+func clientDialAddr(client net.Addr, host string) (netip.Addr, bool) {
+	tcpAddr, ok := client.(*net.TCPAddr)
+	if !ok {
+		return netip.Addr{}, false
 	}
 
 	addr, err := netip.ParseAddr(host)
 	if err != nil {
-		return false
+		return netip.Addr{}, false
 	}
 
-	// EPRT hosts rarely carry a zone, so link-local clients would never match if zones were compared.
-	return addr.WithZone("").Unmap() == clientAddr.Addr().WithZone("").Unmap()
+	clientIP := tcpAddr.AddrPort().Addr().Unmap()
+	addr = addr.Unmap()
+
+	// The same link-local IP on another interface is a different host.
+	if addr.Zone() != "" && addr.Zone() != clientIP.Zone() {
+		return netip.Addr{}, false
+	}
+
+	return clientIP, addr.WithZone("") == clientIP.WithZone("")
 }
 
 func (socket *activeSocket) Host() string {
@@ -319,6 +323,7 @@ func (socket *passiveSocket) ListenAndServe() error {
 
 	go func() {
 		defer socket.lock.Unlock()
+		defer func() { _ = listener.Close() }()
 
 		conn, lErr := listener.Accept()
 		if lErr != nil {
@@ -330,8 +335,6 @@ func (socket *passiveSocket) ListenAndServe() error {
 		socket.conn = conn
 		socket.reader = ratelimit.Reader(socket.conn, socket.sess.server.rateLimiter)
 		socket.writer = ratelimit.Writer(socket.conn, socket.sess.server.rateLimiter)
-
-		_ = listener.Close()
 	}()
 
 	return nil
